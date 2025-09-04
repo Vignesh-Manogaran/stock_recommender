@@ -53,11 +53,10 @@ const TimeFrameTabs: React.FC<TimeFrameTabsProps> = ({
   className = ''
 }) => {
   return (
-    <div className={`space-y-4 ${className}`}>
-      {/* Desktop Tabs */}
-      <div className="hidden md:flex bg-white rounded-lg border border-gray-200 p-1">
+    <div className={`${className}`}>
+      {/* Compact Segmented Control */}
+      <div className="inline-flex bg-gray-100 rounded-lg p-0.5 h-8">
         {timeFrameConfig.map((timeFrame) => {
-          const Icon = timeFrame.icon;
           const isActive = activeTimeFrame === timeFrame.value;
           
           return (
@@ -65,80 +64,27 @@ const TimeFrameTabs: React.FC<TimeFrameTabsProps> = ({
               key={timeFrame.value}
               onClick={() => onTimeFrameChange(timeFrame.value)}
               className={`
-                relative flex-1 flex items-center justify-center px-4 py-3 rounded-md transition-all duration-200
+                relative px-3 py-1 text-sm font-medium rounded-md transition-all duration-200
                 ${isActive 
-                  ? 'text-blue-600 bg-blue-50 border border-blue-200 shadow-sm' 
-                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                  ? 'bg-white text-gray-900 shadow-sm' 
+                  : 'text-gray-600 hover:text-gray-800'
                 }
               `}
             >
               {isActive && (
                 <motion.div
-                  layoutId="activeTimeFrameTab"
-                  className="absolute inset-0 bg-blue-50 border border-blue-200 rounded-md"
+                  layoutId="activeTimeFrameSegment"
+                  className="absolute inset-0 bg-white rounded-md shadow-sm"
                   initial={false}
                   transition={{ duration: 0.2 }}
                 />
               )}
-              
-              <div className="relative flex items-center space-x-2">
-                <Icon className="w-4 h-4" />
-                <div className="text-left">
-                  <div className="font-medium text-sm">
-                    {timeFrame.label}
-                  </div>
-                  <div className={`text-xs ${
-                    isActive ? 'text-blue-500' : 'text-gray-500'
-                  }`}>
-                    {timeFrame.description}
-                  </div>
-                </div>
-              </div>
+              <span className="relative">
+                {timeFrame.shortLabel}
+              </span>
             </button>
           );
         })}
-      </div>
-
-      {/* Mobile Tabs */}
-      <div className="md:hidden">
-        <div className="flex space-x-1 bg-gray-100 rounded-lg p-1">
-          {timeFrameConfig.map((timeFrame) => {
-            const isActive = activeTimeFrame === timeFrame.value;
-            
-            return (
-              <button
-                key={timeFrame.value}
-                onClick={() => onTimeFrameChange(timeFrame.value)}
-                className={`
-                  relative flex-1 px-3 py-2 text-sm font-medium rounded-md transition-all duration-200
-                  ${isActive 
-                    ? 'bg-white text-blue-600 shadow-sm' 
-                    : 'text-gray-600 hover:text-gray-900'
-                  }
-                `}
-              >
-                {isActive && (
-                  <motion.div
-                    layoutId="activeTimeFrameTabMobile"
-                    className="absolute inset-0 bg-white rounded-md shadow-sm"
-                    initial={false}
-                    transition={{ duration: 0.2 }}
-                  />
-                )}
-                <span className="relative">
-                  {timeFrame.shortLabel}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-        
-        {/* Mobile Description */}
-        <div className="mt-2 px-1">
-          <p className="text-sm text-gray-600">
-            {timeFrameConfig.find(tf => tf.value === activeTimeFrame)?.description}
-          </p>
-        </div>
       </div>
     </div>
   );

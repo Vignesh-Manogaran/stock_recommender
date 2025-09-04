@@ -1,7 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { RefreshCw, AlertCircle, TrendingUp, Brain, Clock, LayoutGrid, List } from 'lucide-react';
-import RecommendationCard from './RecommendationCard';
 import RecommendationCardSimple from './RecommendationCardSimple';
 import RecommendationListView from './RecommendationListView';
 import Button from '@/components/ui/Button';
@@ -19,6 +18,7 @@ interface RecommendationGridProps {
   onRecommendationSelect?: (recommendation: StockRecommendation) => void;
   onViewDetails?: (recommendation: StockRecommendation) => void;
   className?: string;
+  hideControls?: boolean;
 }
 
 const RecommendationGrid: React.FC<RecommendationGridProps> = ({
@@ -30,7 +30,8 @@ const RecommendationGrid: React.FC<RecommendationGridProps> = ({
   onRefresh,
   onRecommendationSelect,
   onViewDetails,
-  className = ''
+  className = '',
+  hideControls = false
 }) => {
   const recommendationViewMode = useRecommendationViewMode();
   const { setRecommendationViewMode } = useStockStore();
@@ -174,7 +175,7 @@ const RecommendationGrid: React.FC<RecommendationGridProps> = ({
 
   return (
     <div className={`space-y-6 ${className}`}>
-      <GridHeader />
+      {!hideControls && <GridHeader />}
 
       <AnimatePresence mode="wait">
         {isLoading ? (
