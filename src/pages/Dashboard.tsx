@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { TrendingUp, DollarSign, BarChart3 } from 'lucide-react';
+import { BarChart3 } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { getAllStocks } from '@/data/mockStocks';
 import { useStockStore } from '@/stores/stockStore';
@@ -14,7 +14,6 @@ import HoldingsTab from '@/components/tabs/HoldingsTab';
 
 const Dashboard: React.FC = () => {
   const {
-    filteredStocks,
     loadingState,
     error,
     setStocks,
@@ -44,11 +43,6 @@ const Dashboard: React.FC = () => {
     loadStocks();
   }, [setStocks, setLoadingState, setError]);
 
-  // Calculate summary statistics
-  const totalStocks = filteredStocks.length;
-  const gainers = filteredStocks.filter(stock => stock.change > 0).length;
-  const losers = filteredStocks.filter(stock => stock.change < 0).length;
-  const averageChange = filteredStocks.reduce((sum, stock) => sum + stock.changePercent, 0) / totalStocks || 0;
 
   if (loadingState === 'loading') {
     return <PageLoading text="Loading your dashboard..." />;
@@ -107,74 +101,6 @@ const Dashboard: React.FC = () => {
       {/* Tab Navigation */}
       <TabNavigation activeTab={activeTab} onTabChange={setActiveTab} />
 
-      {/* Summary Stats (only show on Analysis tab) */}
-      {activeTab === 'analysis' && (
-        <div className="bg-white border-b border-gray-200 px-4 sm:px-6 lg:px-8 py-6">
-          <div className="max-w-7xl mx-auto">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-              <Card>
-                <CardContent>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-gray-600">Total Stocks</p>
-                      <p className="text-2xl font-bold text-gray-900">{totalStocks}</p>
-                    </div>
-                    <div className="p-3 bg-blue-100 rounded-full">
-                      <BarChart3 className="w-6 h-6 text-blue-600" />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardContent>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-gray-600">Gainers</p>
-                      <p className="text-2xl font-bold text-green-600">{gainers}</p>
-                    </div>
-                    <div className="p-3 bg-green-100 rounded-full">
-                      <TrendingUp className="w-6 h-6 text-green-600" />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardContent>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-gray-600">Losers</p>
-                      <p className="text-2xl font-bold text-red-600">{losers}</p>
-                    </div>
-                    <div className="p-3 bg-red-100 rounded-full">
-                      <TrendingUp className="w-6 h-6 text-red-600 rotate-180" />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardContent>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-gray-600">Avg. Change</p>
-                      <p className={`text-2xl font-bold ${
-                        averageChange >= 0 ? 'text-green-600' : 'text-red-600'
-                      }`}>
-                        {averageChange >= 0 ? '+' : ''}{averageChange.toFixed(2)}%
-                      </p>
-                    </div>
-                    <div className="p-3 bg-yellow-100 rounded-full">
-                      <DollarSign className="w-6 h-6 text-yellow-600" />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">

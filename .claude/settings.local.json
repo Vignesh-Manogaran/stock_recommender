@@ -8,7 +8,8 @@
       "Bash(npm run build:*)",
       "Bash(npm uninstall:*)",
       "Bash(node:*)",
-      "Bash(pkill:*)"
+      "Bash(pkill:*)",
+      "Bash(rm:*)"
     ],
     "deny": [],
     "ask": []
