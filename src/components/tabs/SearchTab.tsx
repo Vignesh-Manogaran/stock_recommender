@@ -6,7 +6,7 @@ import SearchInput from '@/components/ui/SearchInput';
 import Button from '@/components/ui/Button';
 import Card, { CardHeader, CardContent } from '@/components/ui/Card';
 import { HealthBadge, SignalBadge } from '@/components/ui/Badge';
-import type { Stock, Sector } from '@/types';
+import type { Stock } from '@/types';
 
 const SearchTab: React.FC = () => {
   const {
@@ -27,15 +27,6 @@ const SearchTab: React.FC = () => {
     'ADANIENT', 'BAJFINANCE', 'MARUTI', 'SUNPHARMA', 'TATAMOTORS'
   ]);
 
-  const topPerformers = stocks
-    .filter(stock => stock.changePercent > 0)
-    .sort((a, b) => b.changePercent - a.changePercent)
-    .slice(0, 5);
-
-  const topLosers = stocks
-    .filter(stock => stock.changePercent < 0)
-    .sort((a, b) => a.changePercent - b.changePercent)
-    .slice(0, 5);
 
   const handleStockSelect = (stock: Stock) => {
     setSelectedStock(stock);
@@ -198,58 +189,6 @@ const SearchTab: React.FC = () => {
             </CardContent>
           </Card>
 
-          {/* Market Highlights */}
-          <div className="space-y-6">
-            {/* Top Performers */}
-            <Card>
-              <CardHeader title="Top Gainers" />
-              <CardContent>
-                <div className="space-y-3">
-                  {topPerformers.map((stock, index) => (
-                    <div key={stock.id} className="flex items-center justify-between">
-                      <div className="flex items-center space-x-3">
-                        <span className="text-sm font-medium text-gray-500 w-4">
-                          {index + 1}
-                        </span>
-                        <div>
-                          <p className="font-medium text-gray-900">{stock.symbol}</p>
-                          <p className="text-xs text-gray-500">{formatPrice(stock.price)}</p>
-                        </div>
-                      </div>
-                      <span className="text-sm font-medium text-green-600">
-                        +{stock.changePercent.toFixed(2)}%
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Top Losers */}
-            <Card>
-              <CardHeader title="Top Losers" />
-              <CardContent>
-                <div className="space-y-3">
-                  {topLosers.map((stock, index) => (
-                    <div key={stock.id} className="flex items-center justify-between">
-                      <div className="flex items-center space-x-3">
-                        <span className="text-sm font-medium text-gray-500 w-4">
-                          {index + 1}
-                        </span>
-                        <div>
-                          <p className="font-medium text-gray-900">{stock.symbol}</p>
-                          <p className="text-xs text-gray-500">{formatPrice(stock.price)}</p>
-                        </div>
-                      </div>
-                      <span className="text-sm font-medium text-red-600">
-                        {stock.changePercent.toFixed(2)}%
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
         </div>
       )}
     </div>

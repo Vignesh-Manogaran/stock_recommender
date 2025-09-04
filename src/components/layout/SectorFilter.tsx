@@ -123,9 +123,9 @@ const SectorFilter: React.FC<SectorFilterProps> = ({
 
   return (
     <div className={`relative ${className}`}>
-      {/* Desktop Horizontal Scrollable Filters */}
+      {/* Desktop Grid Layout */}
       <div className="hidden lg:block">
-        <div className="flex space-x-2 overflow-x-auto pb-2 scrollbar-hide">
+        <div className="grid grid-cols-4 xl:grid-cols-6 gap-3">
           {sectorConfig.map((sector) => {
             const Icon = sector.icon;
             const isActive = activeSector === sector.value;
@@ -135,25 +135,27 @@ const SectorFilter: React.FC<SectorFilterProps> = ({
                 key={sector.value}
                 onClick={() => onSectorChange(sector.value)}
                 className={`
-                  relative flex items-center space-x-2 px-4 py-2 rounded-lg transition-all duration-200 whitespace-nowrap
+                  relative flex flex-col items-center space-y-2 p-3 rounded-xl transition-all duration-200 group
                   ${isActive 
-                    ? `${sector.color} ${sector.bgColor} border-2 border-current` 
-                    : 'text-gray-600 bg-white border-2 border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                    ? `${sector.color} ${sector.bgColor} border-2 border-current shadow-md` 
+                    : 'text-gray-600 bg-white border-2 border-gray-200 hover:border-gray-300 hover:bg-gray-50 hover:shadow-sm'
                   }
                 `}
               >
                 {isActive && (
                   <motion.div
                     layoutId="activeSectorFilter"
-                    className={`absolute inset-0 ${sector.bgColor} rounded-lg`}
+                    className={`absolute inset-0 ${sector.bgColor} rounded-xl`}
                     initial={false}
                     transition={{ duration: 0.2 }}
                   />
                 )}
                 
-                <div className="relative flex items-center space-x-2">
-                  <Icon className="w-4 h-4" />
-                  <span className="font-medium text-sm">{sector.label}</span>
+                <div className="relative flex flex-col items-center space-y-2">
+                  <div className={`p-2 rounded-lg ${isActive ? 'bg-white/20' : 'bg-gray-100 group-hover:bg-gray-200'}`}>
+                    <Icon className="w-5 h-5" />
+                  </div>
+                  <span className="font-medium text-xs text-center leading-tight">{sector.label}</span>
                 </div>
               </button>
             );
