@@ -1,7 +1,9 @@
-import React from 'react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { Toaster } from 'react-hot-toast';
-import Dashboard from './pages/Dashboard';
+import React from "react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { Toaster } from "react-hot-toast";
+import Dashboard from "./pages/Dashboard";
+import StockDetailPage from "./pages/StockDetailPage";
 
 // Create a client
 const queryClient = new QueryClient({
@@ -17,29 +19,34 @@ const queryClient = new QueryClient({
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <div className="App">
-        <Dashboard />
-        <Toaster
-          position="top-right"
-          toastOptions={{
-            duration: 4000,
-            style: {
-              background: '#363636',
-              color: '#fff',
-            },
-            success: {
+      <BrowserRouter>
+        <div className="App">
+          <Routes>
+            <Route path="/" element={<Dashboard />} />
+            <Route path="/stock/:symbol" element={<StockDetailPage />} />
+          </Routes>
+          <Toaster
+            position="top-right"
+            toastOptions={{
+              duration: 4000,
               style: {
-                background: '#10B981',
+                background: "#363636",
+                color: "#fff",
               },
-            },
-            error: {
-              style: {
-                background: '#EF4444',
+              success: {
+                style: {
+                  background: "#10B981",
+                },
               },
-            },
-          }}
-        />
-      </div>
+              error: {
+                style: {
+                  background: "#EF4444",
+                },
+              },
+            }}
+          />
+        </div>
+      </BrowserRouter>
     </QueryClientProvider>
   );
 }

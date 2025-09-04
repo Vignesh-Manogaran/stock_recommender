@@ -34,50 +34,110 @@ export interface Stock {
 
 // Health Status Enum
 export enum HealthStatus {
-  BEST = 'BEST',
-  GOOD = 'GOOD', 
-  NORMAL = 'NORMAL',
-  BAD = 'BAD',
-  WORSE = 'WORSE'
+  BEST = "BEST",
+  GOOD = "GOOD",
+  NORMAL = "NORMAL",
+  BAD = "BAD",
+  WORSE = "WORSE",
+}
+
+// Technical Indicator Health
+export interface TechnicalIndicatorHealth {
+  indicator: string;
+  value: number;
+  signal: SignalType;
+  health: HealthStatus;
+  description: string;
+  buyPrice?: number;
+  targetPrice?: number;
+  stopLoss?: number;
+}
+
+// Detailed Stock Analysis Interface
+export interface DetailedStockAnalysis {
+  symbol: string;
+  name: string;
+  about: string;
+  keyPoints: string[];
+  currentPrice: number;
+  marketCap: number;
+  sector: string;
+  industry: string;
+
+  // Financial Health for each category
+  financialHealth: {
+    statements: {
+      incomeStatement: HealthStatus;
+      balanceSheet: HealthStatus;
+      cashFlow: HealthStatus;
+    };
+    profitability: Record<string, { value: number; health: HealthStatus }>;
+    liquidity: Record<string, { value: number; health: HealthStatus }>;
+    valuation: Record<string, { value: number; health: HealthStatus }>;
+    growth: Record<string, { value: number; health: HealthStatus }>;
+    management: HealthStatus;
+    industry: HealthStatus;
+    risks: HealthStatus;
+    outlook: HealthStatus;
+  };
+
+  // Technical Indicators
+  technicalIndicators: {
+    stochasticRSI: TechnicalIndicatorHealth;
+    connorsRSI: TechnicalIndicatorHealth;
+    macd: TechnicalIndicatorHealth;
+    patterns: TechnicalIndicatorHealth;
+    support: number[];
+    resistance: number[];
+  };
+
+  // Pros and Cons
+  pros: string[];
+  cons: string[];
+
+  // Price History
+  priceHistory: PriceData[];
+
+  lastUpdated: Date;
 }
 
 // Signal Types
 export enum SignalType {
-  BUY = 'BUY',
-  SELL = 'SELL',
-  HOLD = 'HOLD'
+  BUY = "BUY",
+  SELL = "SELL",
+  HOLD = "HOLD",
 }
 
 // Sector Types
 export enum Sector {
-  ALL = 'All',
-  TECHNOLOGY = 'Technology',
-  FINANCIAL = 'Financial Sector',
-  IT = 'IT',
-  ENERGY = 'Energy',
-  CONSUMER_DISCRETIONARY = 'Consumer Discretionary',
-  CONSUMER_STAPLES = 'Consumer Staples',
-  MATERIALS = 'Materials',
-  HEALTHCARE = 'Healthcare',
-  REAL_ESTATE = 'Real Estate',
-  UTILITIES = 'Utilities',
-  COMMUNICATION_SERVICES = 'Communication Services',
-  BANKING = 'Banking',
-  PHARMA = 'Pharmaceuticals',
-  AUTO = 'Automobile',
-  FMCG = 'FMCG',
-  METALS = 'Metals',
-  TELECOM = 'Telecommunications',
-  INFRASTRUCTURE = 'Infrastructure'
+  ALL = "All",
+  TECHNOLOGY = "Technology",
+  FINANCIAL = "Financial Sector",
+  IT = "IT",
+  ENERGY = "Energy",
+  CONSUMER_DISCRETIONARY = "Consumer Discretionary",
+  CONSUMER_STAPLES = "Consumer Staples",
+  MATERIALS = "Materials",
+  HEALTHCARE = "Healthcare",
+  REAL_ESTATE = "Real Estate",
+  UTILITIES = "Utilities",
+  COMMUNICATION_SERVICES = "Communication Services",
+  BANKING = "Banking",
+  PHARMA = "Pharmaceuticals",
+  AUTO = "Automobile",
+  FMCG = "FMCG",
+  METALS = "Metals",
+  TELECOM = "Telecommunications",
+  INFRASTRUCTURE = "Infrastructure",
 }
 
 // Time Frame Types for Recommendations
 export enum TimeFrame {
-  SEVEN_DAYS = '7D',
-  ONE_MONTH = '1M',
-  THREE_MONTHS = '3M',
-  SIX_MONTHS = '6M',
-  ONE_YEAR = '1Y'
+  SEVEN_DAYS = "7D",
+  ONE_MONTH = "1M",
+  THREE_MONTHS = "3M",
+  SIX_MONTHS = "6M",
+  ONE_YEAR = "1Y",
 }
 
 // Technical Analysis Data
@@ -204,7 +264,7 @@ export interface AIAnalysis {
   opportunities: string[];
   priceTarget: number | null;
   timeHorizon: string; // '3M', '6M', '1Y'
-  sentiment: 'BULLISH' | 'BEARISH' | 'NEUTRAL';
+  sentiment: "BULLISH" | "BEARISH" | "NEUTRAL";
   generatedAt: Date;
   model: string;
 }
@@ -248,7 +308,7 @@ export interface RecommendationResponse {
 }
 
 export interface MarketSentiment {
-  overall: 'BULLISH' | 'BEARISH' | 'NEUTRAL';
+  overall: "BULLISH" | "BEARISH" | "NEUTRAL";
   score: number; // -100 to 100
   sectors: Record<string, number>;
   factors: {
@@ -275,7 +335,7 @@ export interface SearchFilters {
 
 export interface SortOption {
   field: keyof Stock;
-  direction: 'asc' | 'desc';
+  direction: "asc" | "desc";
 }
 
 // User Preferences
@@ -283,8 +343,8 @@ export interface UserPreferences {
   favorites: string[]; // Stock IDs
   watchlist: string[];
   defaultFilters: SearchFilters;
-  theme: 'light' | 'dark';
-  currency: 'INR' | 'USD';
+  theme: "light" | "dark";
+  currency: "INR" | "USD";
   notifications: {
     priceAlerts: boolean;
     newsAlerts: boolean;
@@ -304,7 +364,7 @@ export interface PriceData {
 
 export interface ChartTimeRange {
   label: string;
-  value: '1D' | '5D' | '1M' | '3M' | '6M' | '1Y' | '2Y' | '5Y' | 'MAX';
+  value: "1D" | "5D" | "1M" | "3M" | "6M" | "1Y" | "2Y" | "5Y" | "MAX";
   days: number;
 }
 
@@ -332,7 +392,7 @@ export interface NewsItem {
   content: string;
   source: string;
   publishedAt: Date;
-  sentiment: 'POSITIVE' | 'NEGATIVE' | 'NEUTRAL';
+  sentiment: "POSITIVE" | "NEGATIVE" | "NEUTRAL";
   relevantStocks: string[];
   tags: string[];
   url: string;
@@ -341,10 +401,10 @@ export interface NewsItem {
 export interface EarningsEvent {
   stockId: string;
   date: Date;
-  type: 'EARNINGS' | 'DIVIDEND' | 'SPLIT' | 'BONUS';
+  type: "EARNINGS" | "DIVIDEND" | "SPLIT" | "BONUS";
   expectedEPS?: number;
   actualEPS?: number;
-  consensus?: 'BEAT' | 'MISS' | 'INLINE';
+  consensus?: "BEAT" | "MISS" | "INLINE";
 }
 
 // Error Types
@@ -355,7 +415,7 @@ export interface APIError {
 }
 
 // Utility Types
-export type LoadingState = 'idle' | 'loading' | 'success' | 'error';
+export type LoadingState = "idle" | "loading" | "success" | "error";
 
 export interface AsyncState<T> {
   data: T | null;
@@ -411,5 +471,7 @@ export type {
   BaseComponentProps,
   StockCardProps,
   TableColumn,
-  VolumeProfile
+  VolumeProfile,
+  TechnicalIndicatorHealth,
+  DetailedStockAnalysis,
 };
