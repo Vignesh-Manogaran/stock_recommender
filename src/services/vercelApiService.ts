@@ -183,6 +183,48 @@ export class VercelApiService {
     }
   }
 
+  // RapidAPI Yahoo Finance proxy
+  static async fetchRapidApiYahoo(
+    symbol: string,
+    endpoint: string = "stock",
+    period: string = "1y"
+  ) {
+    try {
+      const params = new URLSearchParams({
+        symbol,
+        endpoint,
+        period,
+      });
+
+      console.log(`📡 Vercel API: Calling RapidAPI Yahoo for ${symbol}`);
+
+      const response = await fetch(
+        `${this.getBaseUrl()}/api/rapidapi-yahoo?${params}`,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        if (errorData.fallback) {
+          throw new Error("API_FALLBACK_NEEDED");
+        }
+        throw new Error(`Vercel RapidAPI Yahoo returned ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log(`✅ Vercel API: RapidAPI Yahoo success for ${symbol}`);
+      return data;
+    } catch (error) {
+      console.error(`❌ Vercel RapidAPI Yahoo failed for ${symbol}:`, error);
+      throw error;
+    }
+  }
+
   // Check if we're running in Vercel environment
   static isVercelEnvironment(): boolean {
     return (

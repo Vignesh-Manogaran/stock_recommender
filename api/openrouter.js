@@ -16,7 +16,16 @@ export default async function handler(req, res) {
   }
 
   try {
-    const apiKey = process.env.OPENROUTER_API_KEY;
+    const apiKey =
+      process.env.OPENROUTER_API_KEY || process.env.VITE_OPENROUTER_API_KEY;
+
+    console.log(
+      `🔑 OpenRouter API Key check: ${apiKey ? "FOUND" : "NOT FOUND"}`
+    );
+    console.log(
+      `🌍 Environment variables available:`,
+      Object.keys(process.env).filter((k) => k.includes("OPENROUTER"))
+    );
 
     if (!apiKey) {
       console.log("⚠️ OpenRouter API key not configured");

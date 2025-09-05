@@ -49,12 +49,5 @@
         }
       ]
     }
-  ],
-  "env": {
-    "ALPHA_VANTAGE_API_KEY": "@alpha_vantage_api_key",
-    "OPENROUTER_API_KEY": "@openrouter_api_key",
-    "FINANCIAL_MODELING_PREP_API_KEY": "@fmp_api_key",
-    "POLYGON_API_KEY": "@polygon_api_key",
-    "IEX_API_KEY": "@iex_api_key"
-  }
+  ]
 }

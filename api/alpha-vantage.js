@@ -12,7 +12,13 @@ export default async function handler(req, res) {
 
   try {
     const { symbol, function: fn } = req.query;
-    const apiKey = process.env.ALPHA_VANTAGE_API_KEY;
+    const apiKey =
+      process.env.ALPHA_VANTAGE_API_KEY ||
+      process.env.VITE_ALPHA_VANTAGE_API_KEY;
+
+    // Convert Indian stock symbols for Alpha Vantage
+    const cleanSymbol = symbol.replace(".NS", "").replace(".BO", "");
+    console.log(`🔄 Symbol conversion: ${symbol} → ${cleanSymbol}`);
 
     if (!apiKey) {
       console.log("⚠️ Alpha Vantage API key not configured");
@@ -26,7 +32,7 @@ export default async function handler(req, res) {
     // Default to GLOBAL_QUOTE if no function specified
     const functionType = fn || "GLOBAL_QUOTE";
 
-    const alphaUrl = `https://www.alphavantage.co/query?function=${functionType}&symbol=${symbol}&apikey=${apiKey}`;
+    const alphaUrl = `https://www.alphavantage.co/query?function=${functionType}&symbol=${cleanSymbol}&apikey=${apiKey}`;
 
     console.log(`📡 Vercel API: Fetching Alpha Vantage data for ${symbol}`);
 

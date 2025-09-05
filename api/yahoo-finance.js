@@ -26,21 +26,39 @@ export default async function handler(req, res) {
     }
 
     console.log(`📡 Vercel API: Fetching ${yahooUrl}`);
+    console.log(`🔍 Request details: ${endpoint} for ${symbol}`);
+
+    // Add random delay to avoid rate limiting
+    await new Promise((resolve) =>
+      setTimeout(resolve, Math.random() * 1000 + 500)
+    );
 
     const response = await fetch(yahooUrl, {
       headers: {
         "User-Agent":
-          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
-        Accept: "application/json",
+          "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        Accept: "*/*",
+        "Accept-Encoding": "gzip, deflate, br",
         "Accept-Language": "en-US,en;q=0.9",
         "Cache-Control": "no-cache",
-        Pragma: "no-cache",
+        Connection: "keep-alive",
+        "Sec-Fetch-Dest": "empty",
+        "Sec-Fetch-Mode": "cors",
+        "Sec-Fetch-Site": "cross-site",
+        "Sec-Ch-Ua":
+          '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
+        "Sec-Ch-Ua-Mobile": "?0",
+        "Sec-Ch-Ua-Platform": '"macOS"',
       },
     });
 
     if (!response.ok) {
+      const errorBody = await response.text();
+      console.log(`❌ Yahoo Finance Error Body: ${errorBody}`);
       throw new Error(
-        `Yahoo Finance API returned ${response.status}: ${response.statusText}`
+        `Yahoo Finance API returned ${response.status}: ${
+          response.statusText
+        }. Body: ${errorBody.substring(0, 200)}`
       );
     }
 
