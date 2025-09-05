@@ -210,7 +210,7 @@ class OpenRouterAPIService {
     }
   }
 
-  private getMockAnalysis(symbol: string): DetailedStockAnalysis {
+  getMockAnalysis(symbol: string): DetailedStockAnalysis {
     const basePrice = 1000 + Math.random() * 2000;
 
     return {

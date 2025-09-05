@@ -148,7 +148,7 @@ const StockPriceChart: React.FC<StockPriceChartProps> = ({
             Price: ₹{data.price.toLocaleString()}
           </p>
           <p className="text-sm text-gray-600">
-            Volume: {data.volume.toLocaleString()}
+            வொல்யூம்: {data.volume.toLocaleString()}
           </p>
         </div>
       );
@@ -249,13 +249,13 @@ const StockPriceChart: React.FC<StockPriceChartProps> = ({
               y={minPrice * 1.02}
               stroke="#10B981"
               strokeDasharray="5 5"
-              label={{ value: "Support", position: "right" }}
+              label={{ value: "துணை", position: "right" }}
             />
             <ReferenceLine
               y={maxPrice * 0.98}
               stroke="#EF4444"
               strokeDasharray="5 5"
-              label={{ value: "Resistance", position: "right" }}
+              label={{ value: "எதிர்ப்பு", position: "right" }}
             />
 
             <Line
@@ -296,7 +296,7 @@ const StockPriceChart: React.FC<StockPriceChartProps> = ({
           </p>
         </div>
         <div className="text-center">
-          <p className="text-xs text-gray-600 mb-1">Avg Volume</p>
+          <p className="text-xs text-gray-600 mb-1">சராசரி வொல்யூம்</p>
           <p className="text-sm font-semibold text-gray-900">
             {(
               chartData.reduce((sum, d) => sum + d.volume, 0) / chartData.length

@@ -26,7 +26,7 @@ import { DetailedStockAnalysis, HealthStatus, SignalType } from "@/types";
 import StockPriceChart from "@/components/stock/StockPriceChart";
 import FundamentalAnalysisTab from "@/components/tabs/FundamentalAnalysisTab";
 import TechnicalAnalysisTab from "@/components/tabs/TechnicalAnalysisTab";
-import openRouterAPI from "@/services/openRouterAPI";
+import { getStockAnalysis } from "@/services/hybridStockService";
 
 const StockDetailPage: React.FC = () => {
   const { symbol } = useParams<{ symbol: string }>();
@@ -122,7 +122,7 @@ const StockDetailPage: React.FC = () => {
     setSelectedStat(null);
   };
 
-  // Load stock analysis data
+  // Load stock analysis data - Now uses Yahoo Finance + OpenRouter hybrid approach!
   const loadStockAnalysis = async () => {
     if (!symbol) return;
 
@@ -130,9 +130,13 @@ const StockDetailPage: React.FC = () => {
     setError(null);
 
     try {
-      // Use OpenRouter API service with caching
-      const analysis = await openRouterAPI.getCachedAnalysis(symbol);
+      console.log(`🔍 Loading comprehensive analysis for ${symbol}...`);
+
+      // Use our new hybrid service - Real Yahoo Finance data + AI analysis
+      const analysis = await getStockAnalysis(symbol);
       setStockAnalysis(analysis);
+
+      console.log(`✅ Successfully loaded analysis for ${symbol}:`, analysis);
     } catch (err) {
       console.error("Error loading stock analysis:", err);
       setError("Failed to load stock analysis. Please try again.");
@@ -275,7 +279,7 @@ const StockDetailPage: React.FC = () => {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <LoadingSpinner className="w-12 h-12 mx-auto mb-4" />
-          <p className="text-gray-600">Loading detailed stock analysis...</p>
+          <p className="text-gray-600">பங்கு பகுப்பாய்வு ஏற்றப்படுகிறது...</p>
         </div>
       </div>
     );
@@ -288,13 +292,13 @@ const StockDetailPage: React.FC = () => {
           <CardContent className="text-center p-8">
             <AlertTriangle className="w-12 h-12 text-red-500 mx-auto mb-4" />
             <h2 className="text-xl font-bold text-gray-900 mb-2">
-              Error Loading Data
+              தகவல் ஏற்றுவதில் பிழை
             </h2>
             <p className="text-gray-600 mb-6">{error}</p>
             <div className="space-y-3">
               <Button onClick={loadStockAnalysis} className="w-full">
                 <RefreshCw className="w-4 h-4 mr-2" />
-                Try Again
+                மீண்டும் முயற்சிக்கவும்
               </Button>
               <Button
                 variant="outline"
@@ -302,7 +306,7 @@ const StockDetailPage: React.FC = () => {
                 className="w-full"
               >
                 <ArrowLeft className="w-4 h-4 mr-2" />
-                Back to Dashboard
+                Dashboard க்கு திரும்பு
               </Button>
             </div>
           </CardContent>
@@ -325,7 +329,7 @@ const StockDetailPage: React.FC = () => {
                 className="flex items-center space-x-2"
               >
                 <ArrowLeft className="w-4 h-4" />
-                <span>Back</span>
+                <span>திரும்பு</span>
               </Button>
 
               <div>
@@ -347,7 +351,9 @@ const StockDetailPage: React.FC = () => {
               </div>
 
               <div className="text-right">
-                <p className="text-xs text-gray-500">Last updated</p>
+                <p className="text-xs text-gray-500">
+                  கடைசியாக புதுப்பிக்கப்பட்டது
+                </p>
                 <p className="text-xs font-medium text-gray-700">
                   {new Date(stockAnalysis.lastUpdated).toLocaleString()}
                 </p>
@@ -360,7 +366,7 @@ const StockDetailPage: React.FC = () => {
                 className="flex items-center space-x-1"
               >
                 <RefreshCw className="w-3 h-3" />
-                <span className="hidden sm:inline">Refresh</span>
+                <span className="hidden sm:inline">புதுப்பிக்கவும்</span>
               </Button>
 
               <Button variant="outline" size="sm">
@@ -382,7 +388,7 @@ const StockDetailPage: React.FC = () => {
               transition={{ duration: 0.5 }}
             >
               <Card>
-                <CardHeader title="About" />
+                <CardHeader title="நிறுவனம் பற்றி" />
                 <CardContent>
                   <p className="text-gray-700 leading-relaxed mb-6">
                     {stockAnalysis.about}
@@ -390,7 +396,7 @@ const StockDetailPage: React.FC = () => {
 
                   <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
                     <CheckCircle className="w-5 h-5 text-green-600 mr-2" />
-                    Key Points
+                    முக்கிய அம்சங்கள்
                   </h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     {stockAnalysis.keyPoints.map((point, index) => (
@@ -415,7 +421,7 @@ const StockDetailPage: React.FC = () => {
             >
               <Card>
                 <CardHeader
-                  title="Price Chart"
+                  title="விலை Chart"
                   action={
                     <div className="flex items-center space-x-2">
                       <BarChart3 className="w-5 h-5 text-gray-600" />
@@ -438,7 +444,7 @@ const StockDetailPage: React.FC = () => {
                 {/* Pros */}
                 <Card>
                   <CardHeader
-                    title="Pros"
+                    title="சாதகமான விஷயங்கள்"
                     action={<CheckCircle className="w-6 h-6 text-green-600" />}
                   />
                   <CardContent>
@@ -459,7 +465,7 @@ const StockDetailPage: React.FC = () => {
                 {/* Cons */}
                 <Card>
                   <CardHeader
-                    title="Cons"
+                    title="பாதகமான விஷயங்கள்"
                     action={<XCircle className="w-6 h-6 text-red-600" />}
                   />
                   <CardContent>
@@ -499,7 +505,7 @@ const StockDetailPage: React.FC = () => {
                         }`}
                       >
                         <Brain className="w-4 h-4 inline mr-2" />
-                        Fundamental Analysis
+                        அடிப்படை பகுப்பாய்வு
                       </button>
                       <button
                         onClick={() => setActiveTab("technical")}
@@ -510,7 +516,7 @@ const StockDetailPage: React.FC = () => {
                         }`}
                       >
                         <Activity className="w-4 h-4 inline mr-2" />
-                        Technical Analysis
+                        தொழில்நுட்ப பகுப்பாய்வு
                       </button>
                     </div>
                   </div>
@@ -545,7 +551,7 @@ const StockDetailPage: React.FC = () => {
               transition={{ duration: 0.5, delay: 0.1 }}
             >
               <Card>
-                <CardHeader title="Important Stats" />
+                <CardHeader title="முக்கிய அன்கங்கள்" />
                 <CardContent>
                   <div className="space-y-4">
                     {/* Market & Pricing Stats */}
@@ -559,7 +565,9 @@ const StockDetailPage: React.FC = () => {
                           )
                         }
                       >
-                        <p className="text-xs text-blue-600 mb-1">Market Cap</p>
+                        <p className="text-xs text-blue-600 mb-1">
+                          Market Cap (சந்தை மதிப்பு)
+                        </p>
                         <p className="text-sm font-bold text-blue-900">
                           {formatMarketCap(stockAnalysis.marketCap)}
                         </p>
@@ -577,7 +585,7 @@ const StockDetailPage: React.FC = () => {
                         }
                       >
                         <p className="text-xs text-green-600 mb-1">
-                          Current Price
+                          தற்போதைய விலை
                         </p>
                         <p className="text-sm font-bold text-green-900">
                           ₹
@@ -603,7 +611,9 @@ const StockDetailPage: React.FC = () => {
                           )
                         }
                       >
-                        <p className="text-xs text-gray-600 mb-1">High / Low</p>
+                        <p className="text-xs text-gray-600 mb-1">
+                          உயர்ந்த / குறைந்த விலை
+                        </p>
                         <p className="text-sm font-semibold text-gray-900">
                           ₹{(stockAnalysis.currentPrice * 1.15).toFixed(0)} / ₹
                           {(stockAnalysis.currentPrice * 0.85).toFixed(0)}
@@ -621,7 +631,7 @@ const StockDetailPage: React.FC = () => {
                         }
                       >
                         <p className="text-xs text-purple-600 mb-1">
-                          Stock P/E
+                          P/E Ratio (விலை vs வருமானம்)
                         </p>
                         <p className="text-sm font-bold text-purple-900">
                           {stockAnalysis.financialHealth.valuation[
@@ -654,7 +664,7 @@ const StockDetailPage: React.FC = () => {
                         }
                       >
                         <p className="text-xs text-indigo-600 mb-1">
-                          Book Value
+                          Book Value (புத்தக மதிப்பு)
                         </p>
                         <p className="text-sm font-bold text-indigo-900">
                           ₹
@@ -682,7 +692,7 @@ const StockDetailPage: React.FC = () => {
                         }
                       >
                         <p className="text-xs text-yellow-600 mb-1">
-                          Dividend Yield
+                          Dividend Yield (வருடாந்தர வருமானம்)
                         </p>
                         <p className="text-sm font-bold text-yellow-900">
                           {stockAnalysis.financialHealth.valuation[
@@ -708,7 +718,9 @@ const StockDetailPage: React.FC = () => {
                           )
                         }
                       >
-                        <p className="text-xs text-emerald-600 mb-1">ROCE</p>
+                        <p className="text-xs text-emerald-600 mb-1">
+                          ROCE (மூலதன வருமானம்)
+                        </p>
                         <p className="text-sm font-bold text-emerald-900">
                           {stockAnalysis.financialHealth.profitability.ROCE?.value.toFixed(
                             1
@@ -729,7 +741,9 @@ const StockDetailPage: React.FC = () => {
                           )
                         }
                       >
-                        <p className="text-xs text-emerald-600 mb-1">ROE</p>
+                        <p className="text-xs text-emerald-600 mb-1">
+                          ROE (பங்குதாரர் வருமானம்)
+                        </p>
                         <p className="text-sm font-bold text-emerald-900">
                           {stockAnalysis.financialHealth.profitability.ROE?.value.toFixed(
                             1
@@ -747,7 +761,7 @@ const StockDetailPage: React.FC = () => {
                           handleStatClick("Sector", stockAnalysis.sector)
                         }
                       >
-                        <p className="text-xs text-gray-600 mb-1">Sector</p>
+                        <p className="text-xs text-gray-600 mb-1">தொழில்துறை</p>
                         <p className="text-sm font-semibold text-gray-900">
                           {stockAnalysis.sector}
                         </p>
@@ -757,7 +771,7 @@ const StockDetailPage: React.FC = () => {
                         onClick={() => handleStatClick("Face Value", "₹1.00")}
                       >
                         <p className="text-xs text-orange-600 mb-1">
-                          Face Value
+                          Face Value (முக மதிப்பு)
                         </p>
                         <p className="text-sm font-bold text-orange-900">
                           ₹1.00
@@ -776,7 +790,7 @@ const StockDetailPage: React.FC = () => {
               transition={{ duration: 0.5, delay: 0.2 }}
             >
               <Card>
-                <CardHeader title="Technical Summary" />
+                <CardHeader title="தொழில்நுட்ப சுருக்கம்" />
                 <CardContent>
                   <div className="space-y-4">
                     {Object.entries(stockAnalysis.technicalIndicators).map(

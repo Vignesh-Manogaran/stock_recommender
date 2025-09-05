@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { motion } from "framer-motion";
 import {
   TrendingUp,
@@ -21,6 +21,7 @@ import {
   TechnicalIndicatorHealth,
 } from "@/types";
 import Card, { CardContent, CardHeader } from "@/components/ui/Card";
+import TechnicalModal from "@/components/ui/TechnicalModal";
 
 interface TechnicalAnalysisTabProps {
   stockAnalysis: DetailedStockAnalysis;
@@ -40,18 +41,50 @@ const TechnicalAnalysisTab: React.FC<TechnicalAnalysisTabProps> = ({
   getHealthColor,
   formatCurrency,
 }) => {
+  // Modal state
+  const [modalOpen, setModalOpen] = useState(false);
+  const [selectedIndicator, setSelectedIndicator] = useState<{
+    type: string;
+    value: string | number;
+    data?: any;
+  } | null>(null);
+
+  // Handle indicator click
+  const handleIndicatorClick = (
+    indicatorType: string,
+    indicatorValue: string | number,
+    indicatorData?: any
+  ) => {
+    setSelectedIndicator({
+      type: indicatorType,
+      value: indicatorValue,
+      data: indicatorData,
+    });
+    setModalOpen(true);
+  };
+
+  // Close modal
+  const closeModal = () => {
+    setModalOpen(false);
+    setSelectedIndicator(null);
+  };
+
   // Helper function to render indicator card
   const renderIndicatorCard = (
     indicator: TechnicalIndicatorHealth,
     bgColorClass: string,
-    borderColorClass: string
+    borderColorClass: string,
+    indicatorName: string
   ) => {
     const signalConfig = getSignalConfig(indicator.signal);
     const SignalIcon = signalConfig.icon;
 
     return (
       <div
-        className={`${bgColorClass} rounded-xl p-6 border ${borderColorClass}`}
+        className={`${bgColorClass} rounded-xl p-6 border ${borderColorClass} cursor-pointer hover:shadow-md hover:scale-105 transition-all duration-200`}
+        onClick={() =>
+          handleIndicatorClick(indicatorName, indicator.value, indicator)
+        }
       >
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold text-gray-900 flex items-center">
@@ -87,7 +120,20 @@ const TechnicalAnalysisTab: React.FC<TechnicalAnalysisTabProps> = ({
           {/* Trading Levels */}
           <div className="grid grid-cols-3 gap-3">
             {indicator.buyPrice && (
-              <div className="text-center p-2 bg-green-50 rounded-lg border border-green-100">
+              <div
+                className="text-center p-2 bg-green-50 rounded-lg border border-green-100 cursor-pointer hover:bg-green-100 hover:shadow-md transition-all duration-200"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleIndicatorClick(
+                    "Entry Price",
+                    `₹${indicator.buyPrice}`,
+                    {
+                      price: indicator.buyPrice,
+                      type: "entry",
+                    }
+                  );
+                }}
+              >
                 <p className="text-xs text-green-600 mb-1">Entry</p>
                 <p className="text-sm font-semibold text-green-700">
                   ₹{indicator.buyPrice}
@@ -95,7 +141,20 @@ const TechnicalAnalysisTab: React.FC<TechnicalAnalysisTabProps> = ({
               </div>
             )}
             {indicator.targetPrice && (
-              <div className="text-center p-2 bg-blue-50 rounded-lg border border-blue-100">
+              <div
+                className="text-center p-2 bg-blue-50 rounded-lg border border-blue-100 cursor-pointer hover:bg-blue-100 hover:shadow-md transition-all duration-200"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleIndicatorClick(
+                    "Target Price",
+                    `₹${indicator.targetPrice}`,
+                    {
+                      price: indicator.targetPrice,
+                      type: "target",
+                    }
+                  );
+                }}
+              >
                 <p className="text-xs text-blue-600 mb-1">Target</p>
                 <p className="text-sm font-semibold text-blue-700">
                   ₹{indicator.targetPrice}
@@ -103,7 +162,16 @@ const TechnicalAnalysisTab: React.FC<TechnicalAnalysisTabProps> = ({
               </div>
             )}
             {indicator.stopLoss && (
-              <div className="text-center p-2 bg-red-50 rounded-lg border border-red-100">
+              <div
+                className="text-center p-2 bg-red-50 rounded-lg border border-red-100 cursor-pointer hover:bg-red-100 hover:shadow-md transition-all duration-200"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleIndicatorClick("Stop Loss", `₹${indicator.stopLoss}`, {
+                    price: indicator.stopLoss,
+                    type: "stopLoss",
+                  });
+                }}
+              >
                 <p className="text-xs text-red-600 mb-1">Stop Loss</p>
                 <p className="text-sm font-semibold text-red-700">
                   ₹{indicator.stopLoss}
@@ -121,7 +189,22 @@ const TechnicalAnalysisTab: React.FC<TechnicalAnalysisTabProps> = ({
           {indicator.buyPrice &&
             indicator.targetPrice &&
             indicator.stopLoss && (
-              <div className="flex items-center justify-between p-3 bg-indigo-50 rounded-lg border border-indigo-100">
+              <div
+                className="flex items-center justify-between p-3 bg-indigo-50 rounded-lg border border-indigo-100 cursor-pointer hover:bg-indigo-100 hover:shadow-md transition-all duration-200"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const ratio = (
+                    (indicator.targetPrice - indicator.buyPrice) /
+                    (indicator.buyPrice - indicator.stopLoss)
+                  ).toFixed(1);
+                  handleIndicatorClick("Risk Reward Ratio", `1:${ratio}`, {
+                    entry: indicator.buyPrice,
+                    target: indicator.targetPrice,
+                    stopLoss: indicator.stopLoss,
+                    ratio: ratio,
+                  });
+                }}
+              >
                 <span className="text-sm font-medium text-indigo-900">
                   Risk:Reward Ratio
                 </span>
@@ -149,7 +232,7 @@ const TechnicalAnalysisTab: React.FC<TechnicalAnalysisTabProps> = ({
       >
         <Card>
           <CardHeader
-            title="Technical Indicators Summary"
+            title="Technical Indicators Summary (தொழில்நுட்ப காட்டிகள் சுருக்கம்)"
             action={<BarChart3 className="w-6 h-6 text-blue-600" />}
           />
           <CardContent>
@@ -195,12 +278,13 @@ const TechnicalAnalysisTab: React.FC<TechnicalAnalysisTabProps> = ({
         transition={{ duration: 0.5, delay: 0.1 }}
       >
         <Card>
-          <CardHeader title="1. Stochastic RSI (StochRSI)" />
+          <CardHeader title="1. Stochastic RSI (வலுவினை அளவி காட்டி)" />
           <CardContent>
             {renderIndicatorCard(
               stockAnalysis.technicalIndicators.stochasticRSI,
               "bg-green-50",
-              "border-green-200"
+              "border-green-200",
+              "Stochastic RSI"
             )}
 
             <div className="mt-4 p-4 bg-green-25 rounded-lg border border-green-100">
@@ -241,12 +325,13 @@ const TechnicalAnalysisTab: React.FC<TechnicalAnalysisTabProps> = ({
         transition={{ duration: 0.5, delay: 0.2 }}
       >
         <Card>
-          <CardHeader title="2. Connors RSI Family" />
+          <CardHeader title="2. Connors RSI Family (கன்னர்ஸ் RSI குடும்பம்)" />
           <CardContent>
             {renderIndicatorCard(
               stockAnalysis.technicalIndicators.connorsRSI,
               "bg-blue-50",
-              "border-blue-200"
+              "border-blue-200",
+              "Connors RSI"
             )}
 
             <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -327,12 +412,13 @@ const TechnicalAnalysisTab: React.FC<TechnicalAnalysisTabProps> = ({
         transition={{ duration: 0.5, delay: 0.3 }}
       >
         <Card>
-          <CardHeader title="3. MACD + Mean-Reversion Filter" />
+          <CardHeader title="3. MACD + Mean-Reversion Filter (MACD + சராசரி திரும்பும் வடிகறி)" />
           <CardContent>
             {renderIndicatorCard(
               stockAnalysis.technicalIndicators.macd,
               "bg-purple-50",
-              "border-purple-200"
+              "border-purple-200",
+              "MACD"
             )}
 
             <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -415,12 +501,13 @@ const TechnicalAnalysisTab: React.FC<TechnicalAnalysisTabProps> = ({
         transition={{ duration: 0.5, delay: 0.4 }}
       >
         <Card>
-          <CardHeader title="4. Pattern Analysis" />
+          <CardHeader title="4. Pattern Analysis (வடிவ பகுப்பாய்வு)" />
           <CardContent>
             {renderIndicatorCard(
               stockAnalysis.technicalIndicators.patterns,
               "bg-orange-50",
-              "border-orange-200"
+              "border-orange-200",
+              "Pattern Analysis"
             )}
 
             <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -508,7 +595,7 @@ const TechnicalAnalysisTab: React.FC<TechnicalAnalysisTabProps> = ({
       >
         <Card>
           <CardHeader
-            title="5. Support and Resistance Levels"
+            title="5. Support and Resistance Levels (துணை மற்றும் எதிர்ப்பு மட்டங்கள்)"
             action={<BarChart3 className="w-6 h-6 text-indigo-600" />}
           />
           <CardContent>
@@ -524,7 +611,14 @@ const TechnicalAnalysisTab: React.FC<TechnicalAnalysisTabProps> = ({
                     (level, index) => (
                       <div
                         key={index}
-                        className="flex items-center justify-between p-3 bg-green-100 rounded-lg"
+                        className="flex items-center justify-between p-3 bg-green-100 rounded-lg cursor-pointer hover:bg-green-200 hover:shadow-md transition-all duration-200"
+                        onClick={() =>
+                          handleIndicatorClick("Support Level", level, {
+                            level,
+                            type: "support",
+                            index: index + 1,
+                          })
+                        }
                       >
                         <div className="flex items-center space-x-3">
                           <div
@@ -566,7 +660,14 @@ const TechnicalAnalysisTab: React.FC<TechnicalAnalysisTabProps> = ({
                     (level, index) => (
                       <div
                         key={index}
-                        className="flex items-center justify-between p-3 bg-red-100 rounded-lg"
+                        className="flex items-center justify-between p-3 bg-red-100 rounded-lg cursor-pointer hover:bg-red-200 hover:shadow-md transition-all duration-200"
+                        onClick={() =>
+                          handleIndicatorClick("Resistance Level", level, {
+                            level,
+                            type: "resistance",
+                            index: index + 1,
+                          })
+                        }
                       >
                         <div className="flex items-center space-x-3">
                           <div
@@ -609,7 +710,7 @@ const TechnicalAnalysisTab: React.FC<TechnicalAnalysisTabProps> = ({
       >
         <Card>
           <CardHeader
-            title="Technical Analysis Summary"
+            title="Technical Analysis Summary (தொழில்நுட்ப பகுப்பாய்வு சுருக்கம்)"
             action={<Activity className="w-6 h-6 text-purple-600" />}
           />
           <CardContent>
@@ -618,7 +719,7 @@ const TechnicalAnalysisTab: React.FC<TechnicalAnalysisTabProps> = ({
               <div className="text-center p-6 bg-green-50 rounded-xl border border-green-200">
                 <ArrowUp className="w-8 h-8 text-green-600 mx-auto mb-3" />
                 <h3 className="text-lg font-semibold text-green-900 mb-2">
-                  Short Term (1-2 weeks)
+                  குறுகிய காலம் (1-2 வாரங்கள்)
                 </h3>
                 <p className="text-2xl font-bold text-green-600 mb-2">
                   BULLISH
@@ -633,7 +734,7 @@ const TechnicalAnalysisTab: React.FC<TechnicalAnalysisTabProps> = ({
               <div className="text-center p-6 bg-blue-50 rounded-xl border border-blue-200">
                 <TrendingUp className="w-8 h-8 text-blue-600 mx-auto mb-3" />
                 <h3 className="text-lg font-semibold text-blue-900 mb-2">
-                  Medium Term (1-3 months)
+                  நடுத்தர காலம் (1-3 மாதங்கள்)
                 </h3>
                 <p className="text-2xl font-bold text-blue-600 mb-2">
                   POSITIVE
@@ -648,7 +749,7 @@ const TechnicalAnalysisTab: React.FC<TechnicalAnalysisTabProps> = ({
               <div className="text-center p-6 bg-yellow-50 rounded-xl border border-yellow-200">
                 <Shield className="w-8 h-8 text-yellow-600 mx-auto mb-3" />
                 <h3 className="text-lg font-semibold text-yellow-900 mb-2">
-                  Risk Assessment
+                  அபாய மதிப்பீடு
                 </h3>
                 <p className="text-2xl font-bold text-yellow-600 mb-2">
                   MODERATE
@@ -693,6 +794,18 @@ const TechnicalAnalysisTab: React.FC<TechnicalAnalysisTabProps> = ({
           </CardContent>
         </Card>
       </motion.div>
+
+      {/* Technical Modal */}
+      {selectedIndicator && (
+        <TechnicalModal
+          isOpen={modalOpen}
+          onClose={closeModal}
+          indicatorType={selectedIndicator.type}
+          indicatorValue={selectedIndicator.value}
+          indicatorData={selectedIndicator.data}
+          stockData={stockAnalysis}
+        />
+      )}
     </div>
   );
 };
