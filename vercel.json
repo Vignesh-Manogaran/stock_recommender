@@ -1,0 +1,60 @@
+{
+  "functions": {
+    "api/yahoo-finance.js": {
+      "maxDuration": 10
+    },
+    "api/alpha-vantage.js": {
+      "maxDuration": 10
+    },
+    "api/openrouter.js": {
+      "maxDuration": 15
+    },
+    "api/financial-data.js": {
+      "maxDuration": 10
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/api/yahoo-finance",
+      "destination": "/api/yahoo-finance.js"
+    },
+    {
+      "source": "/api/alpha-vantage",
+      "destination": "/api/alpha-vantage.js"
+    },
+    {
+      "source": "/api/openrouter",
+      "destination": "/api/openrouter.js"
+    },
+    {
+      "source": "/api/financial-data",
+      "destination": "/api/financial-data.js"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        {
+          "key": "Access-Control-Allow-Origin",
+          "value": "*"
+        },
+        {
+          "key": "Access-Control-Allow-Methods",
+          "value": "GET, POST, PUT, DELETE, OPTIONS"
+        },
+        {
+          "key": "Access-Control-Allow-Headers",
+          "value": "Content-Type, Authorization"
+        }
+      ]
+    }
+  ],
+  "env": {
+    "ALPHA_VANTAGE_API_KEY": "@alpha_vantage_api_key",
+    "OPENROUTER_API_KEY": "@openrouter_api_key",
+    "FINANCIAL_MODELING_PREP_API_KEY": "@fmp_api_key",
+    "POLYGON_API_KEY": "@polygon_api_key",
+    "IEX_API_KEY": "@iex_api_key"
+  }
+}

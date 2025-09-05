@@ -4,20 +4,119 @@
 import { yahooFinanceAPI, YahooStockData } from "./yahooFinanceAPI";
 import { openRouterAPI } from "./openRouterAPI";
 import { fallbackAPI, FallbackStockData } from "./fallbackAPI";
+import { VercelApiService } from "./vercelApiService";
 import { DetailedStockAnalysis, HealthStatus, SignalType } from "@/types";
 
 export class HybridStockService {
+  // Check if we should use Vercel APIs (when deployed)
+  private static shouldUseVercelApi(): boolean {
+    return (
+      VercelApiService.isVercelEnvironment() ||
+      (typeof window !== "undefined" &&
+        window.location.hostname !== "localhost")
+    );
+  }
+
   // Main method to get comprehensive stock analysis
   async getComprehensiveAnalysis(
     symbol: string
   ): Promise<DetailedStockAnalysis> {
-    // Skip Yahoo Finance temporarily due to proxy issues - go straight to reliable fallback
     console.log(`🔍 Loading comprehensive analysis for ${symbol}...`);
-    console.log(
-      `⚡ Using reliable fallback system for better development experience`
-    );
 
-    /* Temporarily disabled Yahoo Finance due to proxy issues
+    // Use Vercel APIs when deployed, local APIs when in development
+    if (HybridStockService.shouldUseVercelApi()) {
+      console.log(`☁️ Using Vercel serverless functions for ${symbol}`);
+      return await this.getVercelBasedAnalysis(symbol);
+    } else {
+      console.log(`💻 Using development fallback system for ${symbol}`);
+      return await this.getLocalAnalysis(symbol);
+    }
+  }
+
+  // Use Vercel serverless functions for production
+  private async getVercelBasedAnalysis(
+    symbol: string
+  ): Promise<DetailedStockAnalysis> {
+    try {
+      // Try Yahoo Finance via Vercel proxy first
+      console.log(`📡 Trying Yahoo Finance via Vercel proxy for ${symbol}...`);
+      const yahooData = await VercelApiService.fetchYahooFinance(
+        symbol,
+        "summary"
+      );
+
+      if (yahooData && !yahooData.error) {
+        console.log(`✅ Yahoo Finance via Vercel success for ${symbol}!`);
+        const baseAnalysis = this.convertYahooDataToAnalysis(yahooData);
+
+        // Try AI enhancement
+        try {
+          const aiAnalysis = await this.getVercelAiAnalysis(symbol);
+          return this.mergeAnalysis(baseAnalysis, aiAnalysis, yahooData);
+        } catch (aiError) {
+          console.log(`⚠️ AI enhancement failed, using Yahoo data only`);
+          return baseAnalysis;
+        }
+      }
+    } catch (error) {
+      console.log(
+        `⚠️ Yahoo Finance via Vercel failed: ${
+          error instanceof Error ? error.message : String(error)
+        }`
+      );
+    }
+
+    // Try fallback APIs via Vercel
+    try {
+      console.log(`🔄 Trying fallback APIs via Vercel for ${symbol}...`);
+      const fallbackData = await VercelApiService.fetchFinancialData(
+        symbol,
+        "fmp",
+        "quote"
+      );
+
+      if (fallbackData && !fallbackData.error) {
+        console.log(`✅ Fallback API via Vercel success for ${symbol}!`);
+        const baseAnalysis = this.convertFallbackDataToAnalysis(fallbackData);
+
+        try {
+          const aiAnalysis = await this.getVercelAiAnalysis(symbol);
+          return this.mergeFallbackAnalysis(baseAnalysis, aiAnalysis);
+        } catch (aiError) {
+          console.log(`⚠️ AI enhancement failed, using fallback data only`);
+          return baseAnalysis;
+        }
+      }
+    } catch (error) {
+      console.log(
+        `⚠️ Fallback APIs via Vercel failed: ${
+          error instanceof Error ? error.message : String(error)
+        }`
+      );
+    }
+
+    // Final fallback: Smart mock data
+    console.log(
+      `🎭 All Vercel APIs failed, using smart mock data for ${symbol}`
+    );
+    return await openRouterAPI.getMockAnalysis(symbol);
+  }
+
+  // AI analysis via Vercel proxy
+  private async getVercelAiAnalysis(symbol: string) {
+    const prompt = `Provide comprehensive stock analysis for ${symbol} including financial health, technical indicators, and investment recommendation.`;
+    const response = await VercelApiService.fetchOpenRouterAnalysis(
+      symbol,
+      prompt
+    );
+    return response.choices[0].message.content;
+  }
+
+  // Use local fallback system for development
+  private async getLocalAnalysis(
+    symbol: string
+  ): Promise<DetailedStockAnalysis> {
+    /* Temporarily disabled Yahoo Finance due to proxy issues in development
     try {
       // Step 1: Try Yahoo Finance first (best data quality)
       console.log(`🔍 Fetching real data for ${symbol} from Yahoo Finance...`);
@@ -80,26 +179,30 @@ export class HybridStockService {
 
     // Direct to fallback system for reliable development experience
     try {
-      console.log(`🔄 Fetching data via fallback APIs for ${symbol}...`);
+      console.log(`🔄 Fetching data via local fallback APIs for ${symbol}...`);
       const fallbackData = await fallbackAPI.getStockData(symbol);
 
       if (fallbackData) {
-        console.log(`✅ Fallback API success for ${symbol}!`);
+        console.log(`✅ Local fallback API success for ${symbol}!`);
         const baseAnalysis = this.convertFallbackDataToAnalysis(fallbackData);
 
         // Try to enhance with AI
         try {
-          console.log(`🤖 Attempting AI enhancement...`);
+          console.log(`🤖 Attempting local AI enhancement...`);
           const aiAnalysis = await openRouterAPI.getStockAnalysis(symbol);
-          console.log(`✅ AI enhancement successful for ${symbol}!`);
+          console.log(`✅ Local AI enhancement successful for ${symbol}!`);
           return this.mergeFallbackAnalysis(baseAnalysis, aiAnalysis);
         } catch (aiError) {
-          console.log(`⚠️ AI enhancement failed, using fallback data only`);
+          console.log(
+            `⚠️ Local AI enhancement failed, using fallback data only`
+          );
           return baseAnalysis;
         }
       }
     } catch (fallbackError) {
-      console.log(`⚠️ Fallback APIs not available, using smart mock data`);
+      console.log(
+        `⚠️ Local fallback APIs not available, using smart mock data`
+      );
     }
 
     // Final fallback: Smart mock analysis (always works)
