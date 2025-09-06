@@ -124,6 +124,7 @@ export interface MetricWithSource {
   health: HealthStatus;
   dataSource: DataSource;
   lastUpdated?: Date;
+  isNA?: boolean; // Indicates if data is not available and should show N/A
 }
 
 // Sector Types

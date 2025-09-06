@@ -28,11 +28,22 @@ export class HybridStockService {
       rapidApiYahooService.getFinancials(symbol),
       rapidApiYahooService.getBalanceSheet(symbol),
       rapidApiYahooService.getCashFlow(symbol),
+      rapidApiYahooService.getSummary(symbol),
+      rapidApiYahooService.getProfile(symbol),
     ]);
 
-    const [quote, statistics, financials, balanceSheet, cashFlow] = results.map(
+    const [quote, statistics, financials, balanceSheet, cashFlow, summary, profile] = results.map(
       (result) => (result.status === "fulfilled" ? result.value : null)
     );
+
+    console.log(`📊 API Results for ${symbol}:`);
+    console.log(`Quote:`, !!quote);
+    console.log(`Statistics:`, !!statistics);
+    console.log(`Financials:`, !!financials);
+    console.log(`Balance Sheet:`, !!balanceSheet);
+    console.log(`Cash Flow:`, !!cashFlow);
+    console.log(`Summary:`, !!summary);
+    console.log(`Profile:`, !!profile);
 
     return {
       quote,
@@ -40,7 +51,9 @@ export class HybridStockService {
       financials,
       balanceSheet,
       cashFlow,
-      hasRealData: !!(quote || statistics || financials),
+      summary,
+      profile,
+      hasRealData: !!(quote || statistics || financials || summary),
     };
   }
 
@@ -769,6 +782,110 @@ export class HybridStockService {
     };
   }
 
+  // Helper function to create MetricWithSource with N/A for missing data
+  private createMetricWithNA(
+    value: number | null,
+    dataSource: DataSource | null
+  ): MetricWithSource {
+    if (value === null || dataSource === null) {
+      return {
+        value: 0,
+        health: HealthStatus.NORMAL,
+        dataSource: DataSource.MOCK,
+        isNA: true,
+        lastUpdated: new Date(),
+      };
+    }
+    return {
+      value,
+      health: this.assessValueHealth(value),
+      dataSource,
+      isNA: false,
+      lastUpdated: new Date(),
+    };
+  }
+
+  // Create key points based on available data
+  private createKeyPoints(
+    symbol: string,
+    currentPrice: number | null,
+    marketCap: number | null,
+    peRatio: number | null,
+    hasRealData: boolean,
+    sector: string,
+    industry: string
+  ): string[] {
+    const points = [];
+    
+    if (currentPrice) {
+      points.push(`Current price: ₹${currentPrice.toFixed(2)} (Real-time)`);
+    } else {
+      points.push(`Current price: N/A - Not available from Yahoo Finance API`);
+    }
+    
+    if (marketCap) {
+      points.push(`Market cap: ₹${(marketCap / 10000000).toFixed(0)} Cr (Real-time)`);
+    } else {
+      points.push(`Market cap: N/A - Not available from Yahoo Finance API`);
+    }
+    
+    if (peRatio) {
+      points.push(`P/E Ratio: ${peRatio.toFixed(1)} (Real-time)`);
+    } else {
+      points.push(`P/E Ratio: N/A - Not available from Yahoo Finance API`);
+    }
+    
+    points.push(`Sector: ${sector !== "N/A" ? sector : "Not available"}`);
+    points.push(`Industry: ${industry !== "N/A" ? industry : "Not available"}`);
+    
+    return points;
+  }
+
+  // Create pros based on available data
+  private createProsBasedOnData(
+    hasRealData: boolean,
+    currentPrice: number | null,
+    marketCap: number | null,
+    profileData: any
+  ): string[] {
+    if (!hasRealData) {
+      return [
+        "Stock symbol recognized in Yahoo Finance",
+        "Basic trading information structure available",
+        "Potential for future data enhancement"
+      ];
+    }
+    
+    const pros = [];
+    if (currentPrice) pros.push("Real-time price data available");
+    if (marketCap) pros.push("Market capitalization data available");
+    if (profileData) pros.push("Company profile information available");
+    
+    pros.push("Data sourced from Yahoo Finance API");
+    pros.push("Professional financial data provider");
+    
+    return pros;
+  }
+
+  // Create cons based on available data
+  private createConsBasedOnData(hasRealData: boolean, symbol: string): string[] {
+    if (!hasRealData) {
+      return [
+        "Limited data available from Yahoo Finance API",
+        "Stock may be delisted or not actively traded",
+        "Consider verifying stock symbol format",
+        "May require different data provider for this market"
+      ];
+    }
+    
+    return [
+      "Market data subject to real-time volatility",
+      "API dependency for live updates",
+      "Some advanced metrics may not be available",
+      "Data accuracy depends on exchange reporting"
+    ];
+  }
+
   // Helper function to assess metric health based on value
   private assessValueHealth(value: number): HealthStatus {
     if (value > 20) return HealthStatus.BEST;
@@ -789,140 +906,141 @@ export class HybridStockService {
     console.log(`📊 Creating enhanced analysis for ${symbol}`);
     console.log(`📈 Has real data: ${hasRealData}`);
 
-    // Extract real data or use defaults
-    const currentPrice = quote?.regularMarketPrice || 1245.6;
-    const marketCap = quote?.marketCap || 850000000000;
-    const peRatio = quote?.trailingPE || statistics?.priceToEarnings || null;
-    const pbRatio = quote?.priceToBook || statistics?.priceToBook || null;
+    // Extract real data from any of the available sources
+    // Priority: summary > quote > statistics
+    const summaryData = summary?.summaryDetail || summary;
+    const quoteData = quote || summaryData;
+    const statsData = statistics?.defaultKeyStatistics || statistics;
+    const profileData = profile?.assetProfile || profile;
+    
+    // Extract real data or mark as null for N/A display
+    const currentPrice = summaryData?.regularMarketPrice?.raw || 
+                        quoteData?.regularMarketPrice || 
+                        summaryData?.currentPrice?.raw || null;
+    const marketCap = summaryData?.marketCap?.raw || 
+                     quoteData?.marketCap || 
+                     statsData?.marketCap?.raw || null;
+    const peRatio = summaryData?.trailingPE?.raw || 
+                   quoteData?.trailingPE || 
+                   statsData?.trailingPE?.raw || null;
+    const pbRatio = summaryData?.priceToBook?.raw || 
+                   quoteData?.priceToBook || 
+                   statsData?.priceToBook?.raw || null;
+                   
+    // Company info from profile
+    const companyName = profileData?.longName || 
+                       quoteData?.shortName || 
+                       quoteData?.longName || 
+                       `${symbol.toUpperCase()} Limited`;
+    const sector = profileData?.sector || "N/A";
+    const industry = profileData?.industry || "N/A";
+    const description = profileData?.longBusinessSummary || null;
 
-    // Create profitability metrics with real data sources
+    // Create profitability metrics with real data sources - no mock fallbacks
     const profitability: Record<string, MetricWithSource> = {
-      ROE: this.createMetric(
-        statistics?.returnOnEquity ? statistics.returnOnEquity * 100 : 18.5,
-        statistics?.returnOnEquity ? DataSource.RAPID_API_YAHOO : DataSource.MOCK,
-        this.assessROEHealth(statistics?.returnOnEquity)
+      ROE: this.createMetricWithNA(
+        statsData?.returnOnEquity?.raw ? statsData.returnOnEquity.raw * 100 : null,
+        statsData?.returnOnEquity?.raw ? DataSource.RAPID_API_YAHOO : null
       ),
-      ROA: this.createMetric(
-        statistics?.returnOnAssets ? statistics.returnOnAssets * 100 : 12.3,
-        statistics?.returnOnAssets ? DataSource.RAPID_API_YAHOO : DataSource.MOCK,
-        this.assessROEHealth(statistics?.returnOnAssets)
+      ROA: this.createMetricWithNA(
+        statsData?.returnOnAssets?.raw ? statsData.returnOnAssets.raw * 100 : null,
+        statsData?.returnOnAssets?.raw ? DataSource.RAPID_API_YAHOO : null
       ),
-      ROCE: this.createMetric(
-        22.1, // Not typically available in Yahoo Finance
-        DataSource.ESTIMATED
+      ROCE: this.createMetricWithNA(
+        null, // Not typically available in Yahoo Finance
+        null
       ),
-      "Gross Margin": this.createMetric(
-        statistics?.grossMargins ? statistics.grossMargins * 100 : 42.5,
-        statistics?.grossMargins ? DataSource.RAPID_API_YAHOO : DataSource.MOCK
+      "Gross Margin": this.createMetricWithNA(
+        statsData?.grossMargins?.raw ? statsData.grossMargins.raw * 100 : null,
+        statsData?.grossMargins?.raw ? DataSource.RAPID_API_YAHOO : null
       ),
-      "Operating Margin": this.createMetric(
-        statistics?.operatingMargins ? statistics.operatingMargins * 100 : 18.2,
-        statistics?.operatingMargins ? DataSource.RAPID_API_YAHOO : DataSource.MOCK
+      "Operating Margin": this.createMetricWithNA(
+        statsData?.operatingMargins?.raw ? statsData.operatingMargins.raw * 100 : null,
+        statsData?.operatingMargins?.raw ? DataSource.RAPID_API_YAHOO : null
       ),
-      "Net Margin": this.createMetric(
-        statistics?.profitMargins ? statistics.profitMargins * 100 : 15.8,
-        statistics?.profitMargins ? DataSource.RAPID_API_YAHOO : DataSource.MOCK
+      "Net Margin": this.createMetricWithNA(
+        statsData?.profitMargins?.raw ? statsData.profitMargins.raw * 100 : null,
+        statsData?.profitMargins?.raw ? DataSource.RAPID_API_YAHOO : null
       ),
     };
 
-    // Create liquidity metrics with real data sources  
+    // Create liquidity metrics with real data sources - no mock fallbacks
     const liquidity: Record<string, MetricWithSource> = {
-      "Current Ratio": this.createMetric(
-        balanceSheet?.totalCurrentAssets && balanceSheet?.totalCurrentLiabilities
+      "Current Ratio": this.createMetricWithNA(
+        statsData?.currentRatio?.raw ||
+        (balanceSheet?.totalCurrentAssets && balanceSheet?.totalCurrentLiabilities
           ? balanceSheet.totalCurrentAssets / balanceSheet.totalCurrentLiabilities
-          : statistics?.currentRatio || 2.1,
-        balanceSheet?.totalCurrentAssets && balanceSheet?.totalCurrentLiabilities
-          ? DataSource.RAPID_API_YAHOO
-          : statistics?.currentRatio
-          ? DataSource.RAPID_API_YAHOO
-          : DataSource.MOCK
+          : null),
+        statsData?.currentRatio?.raw ? DataSource.RAPID_API_YAHOO :
+        (balanceSheet?.totalCurrentAssets && balanceSheet?.totalCurrentLiabilities)
+          ? DataSource.RAPID_API_YAHOO : null
       ),
-      "Quick Ratio": this.createMetric(
-        statistics?.quickRatio || 1.8,
-        statistics?.quickRatio ? DataSource.RAPID_API_YAHOO : DataSource.MOCK
+      "Quick Ratio": this.createMetricWithNA(
+        statsData?.quickRatio?.raw || null,
+        statsData?.quickRatio?.raw ? DataSource.RAPID_API_YAHOO : null
       ),
-      "Debt-to-Equity": this.createMetric(
-        balanceSheet?.totalDebt && balanceSheet?.shareholderEquity
+      "Debt-to-Equity": this.createMetricWithNA(
+        statsData?.debtToEquity?.raw ||
+        (balanceSheet?.totalDebt && balanceSheet?.shareholderEquity
           ? balanceSheet.totalDebt / balanceSheet.shareholderEquity
-          : statistics?.debtToEquity || 0.3,
-        balanceSheet?.totalDebt && balanceSheet?.shareholderEquity
-          ? DataSource.RAPID_API_YAHOO
-          : statistics?.debtToEquity
-          ? DataSource.RAPID_API_YAHOO
-          : DataSource.MOCK,
-        this.assessDebtHealth(
-          balanceSheet?.totalDebt && balanceSheet?.shareholderEquity
-            ? balanceSheet.totalDebt / balanceSheet.shareholderEquity
-            : statistics?.debtToEquity || 0.3
-        )
+          : null),
+        statsData?.debtToEquity?.raw ? DataSource.RAPID_API_YAHOO :
+        (balanceSheet?.totalDebt && balanceSheet?.shareholderEquity)
+          ? DataSource.RAPID_API_YAHOO : null
       ),
-      "Interest Coverage": this.createMetric(
-        statistics?.interestCoverage || 8.5,
-        statistics?.interestCoverage ? DataSource.RAPID_API_YAHOO : DataSource.MOCK
+      "Interest Coverage": this.createMetricWithNA(
+        null, // Not typically available in Yahoo Finance API
+        null
       ),
     };
 
-    // Create valuation metrics with real data sources
+    // Create valuation metrics with real data sources - no mock fallbacks
     const valuation: Record<string, MetricWithSource> = {
-      "P/E Ratio": this.createMetric(
-        peRatio || 24.5,
-        peRatio ? DataSource.RAPID_API_YAHOO : DataSource.MOCK,
-        this.assessPEHealth(peRatio)
+      "P/E Ratio": this.createMetricWithNA(
+        peRatio,
+        peRatio ? DataSource.RAPID_API_YAHOO : null
       ),
-      "P/B Ratio": this.createMetric(
-        pbRatio || 3.2,
-        pbRatio ? DataSource.RAPID_API_YAHOO : DataSource.MOCK
+      "P/B Ratio": this.createMetricWithNA(
+        pbRatio,
+        pbRatio ? DataSource.RAPID_API_YAHOO : null
       ),
-      "P/S Ratio": this.createMetric(
-        statistics?.priceToSales || 5.8,
-        statistics?.priceToSales ? DataSource.RAPID_API_YAHOO : DataSource.MOCK
+      "P/S Ratio": this.createMetricWithNA(
+        statsData?.priceToSalesTrailing12Months?.raw || null,
+        statsData?.priceToSalesTrailing12Months?.raw ? DataSource.RAPID_API_YAHOO : null
       ),
-      "EV/EBITDA": this.createMetric(
-        statistics?.enterpriseValue && statistics?.ebitda
-          ? statistics.enterpriseValue / statistics.ebitda
-          : 18.2,
-        statistics?.enterpriseValue && statistics?.ebitda
-          ? DataSource.RAPID_API_YAHOO
-          : DataSource.MOCK
+      "EV/EBITDA": this.createMetricWithNA(
+        (statsData?.enterpriseValue?.raw && statsData?.ebitda?.raw)
+          ? statsData.enterpriseValue.raw / statsData.ebitda.raw
+          : null,
+        (statsData?.enterpriseValue?.raw && statsData?.ebitda?.raw)
+          ? DataSource.RAPID_API_YAHOO : null
       ),
-      "Dividend Yield": this.createMetric(
-        quote?.dividendYield ? quote.dividendYield * 100 : 1.2,
-        quote?.dividendYield ? DataSource.RAPID_API_YAHOO : DataSource.MOCK,
-        this.assessDividendHealth(quote?.dividendYield)
+      "Dividend Yield": this.createMetricWithNA(
+        summaryData?.dividendYield?.raw ? summaryData.dividendYield.raw * 100 :
+        quoteData?.dividendYield ? quoteData.dividendYield * 100 : null,
+        (summaryData?.dividendYield?.raw || quoteData?.dividendYield) ? DataSource.RAPID_API_YAHOO : null
       ),
     };
 
-    // Create growth metrics (mostly estimated as these require historical data)
+    // Create growth metrics - these require historical data, mostly N/A
     const growth: Record<string, MetricWithSource> = {
-      "Revenue CAGR (3Y)": this.createMetric(22.8, DataSource.ESTIMATED),
-      "EPS Growth (3Y)": this.createMetric(28.5, DataSource.ESTIMATED),
-      "Market Share Growth": this.createMetric(15.2, DataSource.ESTIMATED),
+      "Revenue CAGR (3Y)": this.createMetricWithNA(null, null),
+      "EPS Growth (3Y)": this.createMetricWithNA(null, null), 
+      "Market Share Growth": this.createMetricWithNA(null, null),
     };
 
     return {
       symbol: symbol.toUpperCase(),
-      name: quote?.shortName || quote?.longName || `${symbol.toUpperCase()} Limited`,
-      about: hasRealData
-        ? `${quote?.shortName || symbol.toUpperCase()} is a leading company with real-time market data. Current analysis shows ${
-            statistics?.profitMargins
-              ? `strong profitability with ${(statistics.profitMargins * 100).toFixed(1)}% net margin`
-              : "steady market performance"
-          }.`
-        : `${symbol.toUpperCase()} analysis with limited real-time data. Metrics are estimated based on market standards.`,
-      keyPoints: [
-        `Current market price: ₹${currentPrice.toFixed(2)} ${
-          quote ? "(Real-time)" : "(Estimated)"
-        }`,
-        `Market cap: ₹${(marketCap / 10000000).toFixed(0)} Cr ${
-          quote?.marketCap ? "(Real-time)" : "(Estimated)"
-        }`,
-        `P/E Ratio: ${peRatio ? peRatio.toFixed(1) + " (Real)" : "24.5 (Mock)"}`,
-        `Data quality: ${hasRealData ? "High (API)" : "Limited (Estimated)"}`,
-      ],
-      currentPrice,
-      marketCap,
-      sector: this.guessSectorFromSymbol(symbol),
-      industry: "Indian Equity",
+      name: companyName,
+      about: description || 
+        (hasRealData
+          ? `${companyName} - Real-time data available from Yahoo Finance API. Company operates in the ${sector} sector.`
+          : `${symbol.toUpperCase()} - Limited data available from Yahoo Finance API for this symbol.`),
+      keyPoints: this.createKeyPoints(symbol, currentPrice, marketCap, peRatio, hasRealData, sector, industry),
+      currentPrice: currentPrice || 0,
+      marketCap: marketCap || 0,
+      sector: sector,
+      industry: industry,
       financialHealth: {
         statements: {
           incomeStatement: hasRealData ? HealthStatus.GOOD : HealthStatus.NORMAL,
@@ -969,40 +1087,8 @@ export class HybridStockService {
           currentPrice * 1.2
         ),
       },
-      pros: hasRealData
-        ? [
-            "Real-time market data integration",
-            "Comprehensive financial metrics from Yahoo Finance API",
-            "Live price and volume updates",
-            "Accurate valuation ratios",
-            "Professional data reliability",
-            "Market-standard calculations",
-          ]
-        : [
-            "Estimated based on industry standards",
-            "Conservative growth projections", 
-            "Stable market assumptions",
-            "Risk-adjusted valuations",
-            "Industry benchmark comparisons",
-            "Fallback data reliability",
-          ],
-      cons: hasRealData
-        ? [
-            "Market data subject to real-time volatility",
-            "API dependency for live updates",
-            "Complex metric interpretation required",
-            "Potential data lag during high volume",
-            "Technical analysis needs expertise",
-            "Real-time risks and opportunities",
-          ]
-        : [
-            "Limited real-time data availability",
-            "Estimated metrics may vary from actual",
-            "Reduced accuracy in volatile markets",
-            "Generic industry assumptions",
-            "Delayed market reflection",
-            "Mock data limitations",
-          ],
+      pros: this.createProsBasedOnData(hasRealData, currentPrice, marketCap, profileData),
+      cons: this.createConsBasedOnData(hasRealData, symbol),
       priceHistory: [],
       lastUpdated: new Date(),
     };
