@@ -5,8 +5,8 @@ import { yahooFinanceAPI, YahooStockData } from "./yahooFinanceAPI";
 import { openRouterAPI } from "./openRouterAPI";
 import { fallbackAPI, FallbackStockData } from "./fallbackAPI";
 import { VercelApiService } from "./vercelApiService";
-import { rapidApiYahooService } from "./rapidApiYahooService";
-import { DetailedStockAnalysis, HealthStatus, SignalType, DataSource, MetricWithSource } from "@/types";
+import { rapidApiYahooService, RapidApiYahooChart } from "./rapidApiYahooService";
+import { DetailedStockAnalysis, HealthStatus, SignalType, DataSource, MetricWithSource, PriceData } from "@/types";
 
 export class HybridStockService {
   // Check if we should use Vercel APIs (when deployed)
@@ -311,6 +311,129 @@ export class HybridStockService {
     };
     
     return this.createEnhancedAnalysis(symbol, mockEnhancedData);
+  }
+
+  // Method to get chart data
+  async getChartData(
+    symbol: string,
+    range: string = "1mo",
+    interval: string = "1d"
+  ): Promise<{ data: PriceData[]; isRealData: boolean; dataSource: DataSource }> {
+    console.log(`📈 Fetching chart data for ${symbol} (${range}, ${interval})`);
+
+    try {
+      // Try to get real chart data from RapidAPI Yahoo
+      const chartResponse = await rapidApiYahooService.getChart(symbol, range, interval);
+      
+      if (chartResponse?.chart?.result?.[0]) {
+        const result = chartResponse.chart.result[0];
+        const timestamps = result.timestamp || [];
+        const quotes = result.indicators?.quote?.[0];
+        const adjClose = result.indicators?.adjclose?.[0]?.adjclose;
+
+        if (timestamps.length > 0 && quotes) {
+          const priceData: PriceData[] = [];
+
+          for (let i = 0; i < timestamps.length; i++) {
+            if (
+              quotes.open?.[i] !== undefined &&
+              quotes.high?.[i] !== undefined &&
+              quotes.low?.[i] !== undefined &&
+              quotes.close?.[i] !== undefined &&
+              quotes.volume?.[i] !== undefined
+            ) {
+              priceData.push({
+                date: new Date(timestamps[i] * 1000),
+                open: quotes.open[i],
+                high: quotes.high[i],
+                low: quotes.low[i],
+                close: adjClose?.[i] || quotes.close[i],
+                volume: quotes.volume[i],
+              });
+            }
+          }
+
+          if (priceData.length > 0) {
+            console.log(`✅ Real chart data retrieved: ${priceData.length} data points`);
+            return {
+              data: priceData,
+              isRealData: true,
+              dataSource: DataSource.RAPID_API_YAHOO,
+            };
+          }
+        }
+      }
+    } catch (error) {
+      console.error(`❌ Failed to fetch real chart data: ${error.message}`);
+    }
+
+    // Fallback to mock data
+    console.log(`🎭 Using mock chart data for ${symbol}`);
+    const mockData = this.generateMockChartData(range);
+    return {
+      data: mockData,
+      isRealData: false,
+      dataSource: DataSource.MOCK,
+    };
+  }
+
+  // Generate mock chart data as fallback
+  private generateMockChartData(range: string): PriceData[] {
+    const days = this.getDaysFromRange(range);
+    const data: PriceData[] = [];
+    const basePrice = 1000 + Math.random() * 1000;
+    let currentPrice = basePrice;
+
+    const now = new Date();
+
+    for (let i = days; i >= 0; i--) {
+      const date = new Date(now);
+      date.setDate(date.getDate() - i);
+
+      // Add realistic price movement
+      const change = (Math.random() - 0.5) * 0.04; // ±2% daily change
+      const trend = Math.sin(i / 10) * 0.01; // Add trending pattern
+      currentPrice = currentPrice * (1 + change + trend);
+      currentPrice = Math.max(currentPrice, basePrice * 0.5);
+
+      const dayHigh = currentPrice * (1 + Math.random() * 0.02);
+      const dayLow = currentPrice * (1 - Math.random() * 0.02);
+
+      data.push({
+        date: date,
+        open: currentPrice * (0.99 + Math.random() * 0.02),
+        high: dayHigh,
+        low: dayLow,
+        close: currentPrice,
+        volume: Math.floor(Math.random() * 1000000) + 100000,
+      });
+    }
+
+    return data;
+  }
+
+  // Convert range string to days
+  private getDaysFromRange(range: string): number {
+    switch (range) {
+      case "1d":
+        return 1;
+      case "5d":
+        return 5;
+      case "1mo":
+        return 30;
+      case "3mo":
+        return 90;
+      case "6mo":
+        return 180;
+      case "1y":
+        return 365;
+      case "2y":
+        return 730;
+      case "5y":
+        return 1825;
+      default:
+        return 30;
+    }
   }
 
   // Convert Yahoo Finance data to our DetailedStockAnalysis format
@@ -1330,6 +1453,15 @@ export const getStockAnalysis = async (
   symbol: string
 ): Promise<DetailedStockAnalysis> => {
   return await hybridStockService.getComprehensiveAnalysis(symbol);
+};
+
+// Chart data helper function
+export const getStockChartData = async (
+  symbol: string,
+  range: string = "1mo",
+  interval: string = "1d"
+): Promise<{ data: PriceData[]; isRealData: boolean; dataSource: DataSource }> => {
+  return await hybridStockService.getChartData(symbol, range, interval);
 };
 
 // Export for testing in console
