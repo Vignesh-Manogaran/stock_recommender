@@ -637,6 +637,7 @@ const StockDetailPage: React.FC = () => {
                     </div>
                   )}
                 </CardContent>
+              </Card>
             </motion.div>
 
             {/* Technical Summary */}
