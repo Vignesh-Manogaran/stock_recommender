@@ -26,7 +26,9 @@ import { DetailedStockAnalysis, HealthStatus, SignalType } from "@/types";
 import StockPriceChart from "@/components/stock/StockPriceChart";
 import FundamentalAnalysisTab from "@/components/tabs/FundamentalAnalysisTab";
 import TechnicalAnalysisTab from "@/components/tabs/TechnicalAnalysisTab";
+import DataSourceBadge from "@/components/ui/DataSourceBadge";
 import { getStockAnalysis } from "@/services/hybridStockService";
+import { DataSource } from "@/types";
 
 const StockDetailPage: React.FC = () => {
   const { symbol } = useParams<{ symbol: string }>();
@@ -378,6 +380,37 @@ const StockDetailPage: React.FC = () => {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Data Quality Legend */}
+        <div className="mb-6">
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex flex-wrap items-center justify-between">
+                <div className="flex items-center space-x-2 mb-2 md:mb-0">
+                  <h3 className="text-sm font-medium text-gray-900">Data Quality:</h3>
+                </div>
+                <div className="flex flex-wrap items-center space-x-4 gap-y-2">
+                  <div className="flex items-center space-x-2">
+                    <DataSourceBadge dataSource={DataSource.RAPID_API_YAHOO} />
+                    <span className="text-xs text-gray-600">Real-time API</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <DataSourceBadge dataSource={DataSource.CALCULATED} />
+                    <span className="text-xs text-gray-600">Calculated</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <DataSourceBadge dataSource={DataSource.ESTIMATED} />
+                    <span className="text-xs text-gray-600">Estimated</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <DataSourceBadge dataSource={DataSource.MOCK} />
+                    <span className="text-xs text-gray-600">Mock Data</span>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Left Column - Main Content */}
           <div className="lg:col-span-2 space-y-8">

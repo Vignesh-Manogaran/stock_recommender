@@ -39,6 +39,41 @@ export interface RapidApiYahooFinancials {
   debtToEquity?: number;
 }
 
+export interface RapidApiYahooStatistics {
+  returnOnEquity?: number;
+  returnOnAssets?: number;
+  profitMargins?: number;
+  operatingMargins?: number;
+  grossMargins?: number;
+  currentRatio?: number;
+  quickRatio?: number;
+  debtToEquity?: number;
+  interestCoverage?: number;
+  priceToBook?: number;
+  priceToSales?: number;
+  enterpriseValue?: number;
+  ebitda?: number;
+}
+
+export interface RapidApiYahooBalanceSheet {
+  totalAssets?: number;
+  totalLiabilities?: number;
+  totalCurrentAssets?: number;
+  totalCurrentLiabilities?: number;
+  totalDebt?: number;
+  totalCash?: number;
+  shareholderEquity?: number;
+  retainedEarnings?: number;
+}
+
+export interface RapidApiYahooCashFlow {
+  operatingCashflow?: number;
+  freeCashflow?: number;
+  capitalExpenditures?: number;
+  netIncome?: number;
+  dividendsPaid?: number;
+}
+
 class RapidApiYahooService {
   private readonly baseUrl =
     "https://yahoo-finance-real-time-api.p.rapidapi.com";
@@ -217,6 +252,123 @@ class RapidApiYahooService {
     } catch (error) {
       console.error(
         `❌ RapidAPI Yahoo historical failed for ${symbol}:`,
+        error
+      );
+      return null;
+    }
+  }
+
+  /**
+   * Get comprehensive statistics data
+   */
+  async getStatistics(symbol: string): Promise<RapidApiYahooStatistics | null> {
+    try {
+      const yahooSymbol = this.formatSymbolForYahoo(symbol);
+      console.log(
+        `📡 RapidAPI Yahoo: Getting statistics for ${symbol} -> ${yahooSymbol}`
+      );
+
+      const response = await fetch(
+        `${this.baseUrl}/statistics/${yahooSymbol}`,
+        {
+          method: "GET",
+          headers: this.getHeaders(),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(
+          `RapidAPI Yahoo Statistics returned ${response.status}: ${response.statusText}`
+        );
+      }
+
+      const data = await response.json();
+      console.log(
+        `✅ RapidAPI Yahoo: Statistics data received for ${yahooSymbol}`
+      );
+
+      return data;
+    } catch (error) {
+      console.error(
+        `❌ RapidAPI Yahoo statistics failed for ${symbol}:`,
+        error
+      );
+      return null;
+    }
+  }
+
+  /**
+   * Get balance sheet data
+   */
+  async getBalanceSheet(symbol: string): Promise<RapidApiYahooBalanceSheet | null> {
+    try {
+      const yahooSymbol = this.formatSymbolForYahoo(symbol);
+      console.log(
+        `📡 RapidAPI Yahoo: Getting balance sheet for ${symbol} -> ${yahooSymbol}`
+      );
+
+      const response = await fetch(
+        `${this.baseUrl}/balance-sheet/${yahooSymbol}`,
+        {
+          method: "GET",
+          headers: this.getHeaders(),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(
+          `RapidAPI Yahoo Balance Sheet returned ${response.status}: ${response.statusText}`
+        );
+      }
+
+      const data = await response.json();
+      console.log(
+        `✅ RapidAPI Yahoo: Balance sheet data received for ${yahooSymbol}`
+      );
+
+      return data;
+    } catch (error) {
+      console.error(
+        `❌ RapidAPI Yahoo balance sheet failed for ${symbol}:`,
+        error
+      );
+      return null;
+    }
+  }
+
+  /**
+   * Get cash flow data
+   */
+  async getCashFlow(symbol: string): Promise<RapidApiYahooCashFlow | null> {
+    try {
+      const yahooSymbol = this.formatSymbolForYahoo(symbol);
+      console.log(
+        `📡 RapidAPI Yahoo: Getting cash flow for ${symbol} -> ${yahooSymbol}`
+      );
+
+      const response = await fetch(
+        `${this.baseUrl}/cashflow/${yahooSymbol}`,
+        {
+          method: "GET",
+          headers: this.getHeaders(),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(
+          `RapidAPI Yahoo Cash Flow returned ${response.status}: ${response.statusText}`
+        );
+      }
+
+      const data = await response.json();
+      console.log(
+        `✅ RapidAPI Yahoo: Cash flow data received for ${yahooSymbol}`
+      );
+
+      return data;
+    } catch (error) {
+      console.error(
+        `❌ RapidAPI Yahoo cash flow failed for ${symbol}:`,
         error
       );
       return null;
