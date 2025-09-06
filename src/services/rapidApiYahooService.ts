@@ -115,20 +115,32 @@ class RapidApiYahooService {
   private readonly apiKey: string;
 
   constructor() {
-    // Try different environment variable names
+    // Try different environment variable names (Vercel uses RAPIDAPI_KEY, local dev uses VITE_RAPIDAPI_KEY)
     this.apiKey =
       process.env.RAPIDAPI_KEY ||
       process.env.VITE_RAPIDAPI_KEY ||
       import.meta.env.VITE_RAPIDAPI_KEY ||
+      import.meta.env.RAPIDAPI_KEY ||
       "";
+
+    console.log("🔍 API Key check:", {
+      hasProcessRapidApi: !!process.env.RAPIDAPI_KEY,
+      hasProcessViteRapidApi: !!process.env.VITE_RAPIDAPI_KEY,
+      hasImportMetaViteRapidApi: !!import.meta.env.VITE_RAPIDAPI_KEY,
+      hasImportMetaRapidApi: !!import.meta.env.RAPIDAPI_KEY,
+      finalKeySet: !!this.apiKey,
+      keyPrefix: this.apiKey ? this.apiKey.substring(0, 8) + "..." : "NOT SET"
+    });
 
     if (!this.apiKey || this.apiKey === "PLEASE_ADD_YOUR_RAPIDAPI_KEY_HERE") {
       console.warn(
-        "⚠️ RapidAPI key not configured. Please add your API key to .env file as VITE_RAPIDAPI_KEY"
+        "⚠️ RapidAPI key not configured. For local development, add VITE_RAPIDAPI_KEY to .env file"
       );
       console.warn(
-        "🔑 Get your free API key from: https://rapidapi.com/alphavantage-rapidapi/api/yahoo-finance-real-time/"
+        "🔑 For Vercel deployment, ensure RAPIDAPI_KEY is set in environment variables"
       );
+    } else {
+      console.log("✅ RapidAPI key configured successfully");
     }
   }
 

@@ -37,11 +37,19 @@ const ApiKeyNotice: React.FC<ApiKeyNoticeProps> = ({
           
           <div className="bg-orange-100 rounded-lg p-4 mb-4">
             <h4 className="text-sm font-medium text-orange-900 mb-2">Setup Instructions:</h4>
-            <ol className="text-sm text-orange-800 space-y-1 ml-4 list-decimal">
-              <li>Get a free API key from RapidAPI</li>
-              <li>Add <code className="bg-orange-200 px-1 rounded text-xs">VITE_RAPIDAPI_KEY=your_key_here</code> to your .env file</li>
-              <li>Restart the development server</li>
-            </ol>
+            <div className="text-sm text-orange-800 space-y-2">
+              <p><strong>For Local Development:</strong></p>
+              <ol className="ml-4 list-decimal space-y-1">
+                <li>Get a free API key from RapidAPI</li>
+                <li>Add <code className="bg-orange-200 px-1 rounded text-xs">VITE_RAPIDAPI_KEY=your_key_here</code> to your .env file</li>
+                <li>Restart the development server</li>
+              </ol>
+              <p className="pt-2"><strong>For Vercel Deployment:</strong></p>
+              <ol className="ml-4 list-decimal space-y-1">
+                <li>Set <code className="bg-orange-200 px-1 rounded text-xs">RAPIDAPI_KEY</code> in Vercel environment variables</li>
+                <li>Redeploy your application</li>
+              </ol>
+            </div>
           </div>
           
           <div className="flex space-x-3">
