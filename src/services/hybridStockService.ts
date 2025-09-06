@@ -1543,7 +1543,8 @@ export const hybridStockService = new HybridStockService();
 export const getStockAnalysis = async (
   symbol: string
 ): Promise<DetailedStockAnalysis> => {
-  return await hybridStockService.getComprehensiveAnalysis(symbol);
+  const service = new HybridStockService();
+  return await service.getComprehensiveAnalysis(symbol);
 };
 
 // Chart data helper function
@@ -1552,7 +1553,8 @@ export const getStockChartData = async (
   range: string = "1mo",
   interval: string = "1d"
 ): Promise<{ data: PriceData[]; isRealData: boolean; dataSource: DataSource }> => {
-  return await hybridStockService.getChartData(symbol, range, interval);
+  const service = new HybridStockService();
+  return await service.getChartData(symbol, range, interval);
 };
 
 // Get only real API metrics (no mock data)
@@ -1560,7 +1562,8 @@ export const getRealStockMetrics = async (symbol: string) => {
   console.log(`🔍 Fetching ONLY real metrics for ${symbol}`);
   
   try {
-    const enhancedData = await hybridStockService.getEnhancedFinancialData(symbol);
+    const service = new HybridStockService();
+    const enhancedData = await service.getEnhancedFinancialData(symbol);
     
     if (!enhancedData.hasRealData) {
       console.log(`❌ No real data available for ${symbol}`);
@@ -1649,7 +1652,8 @@ export const getRealStockMetrics = async (symbol: string) => {
 // Export for testing in console
 export const testStockAPI = async (symbol: string = "TCS") => {
   console.log(`🧪 Testing all data sources for ${symbol}...`);
-  const results = await hybridStockService.testDataSources(symbol);
+  const service = new HybridStockService();
+  const results = await service.testDataSources(symbol);
   console.log("📊 Results:", results);
   return results;
 };
@@ -1658,7 +1662,8 @@ export const testStockAPI = async (symbol: string = "TCS") => {
 export const checkDataSource = async (symbol: string = "TCS") => {
   console.log(`🔍 ===== CHECKING DATA SOURCE FOR ${symbol} =====`);
   try {
-    const analysis = await hybridStockService.getComprehensiveAnalysis(symbol);
+    const service = new HybridStockService();
+    const analysis = await service.getComprehensiveAnalysis(symbol);
     console.log(`🎯 SUCCESS! Data retrieved for ${symbol}`);
     console.log(`💰 Price: ₹${analysis.currentPrice}`);
     console.log(`🏢 Company: ${analysis.companyName}`);
