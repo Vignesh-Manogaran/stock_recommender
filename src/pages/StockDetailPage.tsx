@@ -626,7 +626,7 @@ const StockDetailPage: React.FC = () => {
                             "Stock P/E",
                             stockAnalysis.financialHealth.valuation[
                               "P/E Ratio"
-                            ]?.value.toFixed(1) || "N/A"
+                            ]?.value?.toFixed(1) || "N/A"
                           )
                         }
                       >
@@ -636,7 +636,7 @@ const StockDetailPage: React.FC = () => {
                         <p className="text-sm font-bold text-purple-900">
                           {stockAnalysis.financialHealth.valuation[
                             "P/E Ratio"
-                          ]?.value.toFixed(1) || "N/A"}
+                          ]?.value?.toFixed(1) || "N/A"}
                         </p>
                       </div>
                     </div>
@@ -656,7 +656,7 @@ const StockDetailPage: React.FC = () => {
                                     stockAnalysis.currentPrice /
                                     stockAnalysis.financialHealth.valuation[
                                       "P/B Ratio"
-                                    ].value
+                                    ]?.value
                                   ).toFixed(0)
                                 : "341"
                             }`
@@ -673,7 +673,7 @@ const StockDetailPage: React.FC = () => {
                                 stockAnalysis.currentPrice /
                                 stockAnalysis.financialHealth.valuation[
                                   "P/B Ratio"
-                                ].value
+                                ]?.value
                               ).toFixed(0)
                             : "341"}
                         </p>
@@ -686,7 +686,7 @@ const StockDetailPage: React.FC = () => {
                             `${
                               stockAnalysis.financialHealth.valuation[
                                 "Dividend Yield"
-                              ]?.value.toFixed(1) || "1.2"
+                              ]?.value?.toFixed(1) || "1.2"
                             }%`
                           )
                         }
@@ -697,7 +697,7 @@ const StockDetailPage: React.FC = () => {
                         <p className="text-sm font-bold text-yellow-900">
                           {stockAnalysis.financialHealth.valuation[
                             "Dividend Yield"
-                          ]?.value.toFixed(1) || "1.2"}
+                          ]?.value?.toFixed(1) || "1.2"}
                           %
                         </p>
                       </div>
@@ -711,7 +711,7 @@ const StockDetailPage: React.FC = () => {
                           handleStatClick(
                             "ROCE",
                             `${
-                              stockAnalysis.financialHealth.profitability.ROCE?.value.toFixed(
+                              stockAnalysis.financialHealth.profitability.ROCE?.value?.toFixed(
                                 1
                               ) || "7.5"
                             }%`
@@ -722,7 +722,7 @@ const StockDetailPage: React.FC = () => {
                           ROCE (மூலதன வருமானம்)
                         </p>
                         <p className="text-sm font-bold text-emerald-900">
-                          {stockAnalysis.financialHealth.profitability.ROCE?.value.toFixed(
+                          {stockAnalysis.financialHealth.profitability.ROCE?.value?.toFixed(
                             1
                           ) || "7.5"}
                           %
@@ -734,7 +734,7 @@ const StockDetailPage: React.FC = () => {
                           handleStatClick(
                             "ROE",
                             `${
-                              stockAnalysis.financialHealth.profitability.ROE?.value.toFixed(
+                              stockAnalysis.financialHealth.profitability.ROE?.value?.toFixed(
                                 1
                               ) || "14.4"
                             }%`
@@ -745,7 +745,7 @@ const StockDetailPage: React.FC = () => {
                           ROE (பங்குதாரர் வருமானம்)
                         </p>
                         <p className="text-sm font-bold text-emerald-900">
-                          {stockAnalysis.financialHealth.profitability.ROE?.value.toFixed(
+                          {stockAnalysis.financialHealth.profitability.ROE?.value?.toFixed(
                             1
                           ) || "14.4"}
                           %

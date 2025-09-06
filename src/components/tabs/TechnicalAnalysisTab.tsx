@@ -83,7 +83,7 @@ const TechnicalAnalysisTab: React.FC<TechnicalAnalysisTabProps> = ({
       <div
         className={`${bgColorClass} rounded-xl p-6 border ${borderColorClass} cursor-pointer hover:shadow-md hover:scale-105 transition-all duration-200`}
         onClick={() =>
-          handleIndicatorClick(indicatorName, indicator.value, indicator)
+          handleIndicatorClick(indicatorName, indicator?.value || 0, indicator)
         }
       >
         <div className="flex items-center justify-between mb-4">
@@ -105,14 +105,14 @@ const TechnicalAnalysisTab: React.FC<TechnicalAnalysisTabProps> = ({
             <span className="text-sm text-gray-600">Current Value</span>
             <div className="flex items-center space-x-2">
               <span className="text-xl font-bold text-gray-900">
-                {indicator.value.toFixed(2)}
+                {(indicator?.value || 0).toFixed(2)}
               </span>
               <span
                 className={`text-xs px-2 py-1 rounded-full font-medium ${getHealthColor(
-                  indicator.health
+                  indicator?.health || HealthStatus.NORMAL
                 )}`}
               >
-                {indicator.health}
+                {indicator?.health || HealthStatus.NORMAL}
               </span>
             </div>
           </div>
