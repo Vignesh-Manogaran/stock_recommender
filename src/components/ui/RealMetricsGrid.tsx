@@ -2,7 +2,7 @@ import React from "react";
 import { DataSource, MetricWithSource } from "@/types";
 import DataSourceBadge from "./DataSourceBadge";
 import { XCircle, CheckCircle, AlertTriangle } from "lucide-react";
-import Badge from "./badge";
+import Badge from "./Badge";
 
 
 interface RealMetricsGridProps {

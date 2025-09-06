@@ -13,7 +13,8 @@
       "WebFetch(domain:algotrading101.com)",
       "Bash(cd:*)",
       "Read(//Users/vigneshhome/Desktop/**)",
-      "Bash(sed:*)"
+      "Bash(sed:*)",
+      "Read(//Volumes/**)"
     ],
     "deny": [],
     "ask": []
