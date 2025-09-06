@@ -9,7 +9,9 @@
       "Bash(npm uninstall:*)",
       "Bash(node:*)",
       "Bash(pkill:*)",
-      "Bash(rm:*)"
+      "Bash(rm:*)",
+      "WebFetch(domain:algotrading101.com)",
+      "Bash(cd:*)"
     ],
     "deny": [],
     "ask": []

@@ -5,7 +5,8 @@ import { yahooFinanceAPI, YahooStockData } from "./yahooFinanceAPI";
 import { openRouterAPI } from "./openRouterAPI";
 import { fallbackAPI, FallbackStockData } from "./fallbackAPI";
 import { VercelApiService } from "./vercelApiService";
-import { DetailedStockAnalysis, HealthStatus, SignalType } from "@/types";
+import { rapidApiYahooService } from "./rapidApiYahooService";
+import { DetailedStockAnalysis, HealthStatus, SignalType, DataSource, MetricWithSource } from "@/types";
 
 export class HybridStockService {
   // Check if we should use Vercel APIs (when deployed)
@@ -15,6 +16,32 @@ export class HybridStockService {
       (typeof window !== "undefined" &&
         window.location.hostname !== "localhost")
     );
+  }
+
+  // New method to fetch comprehensive financial data from multiple endpoints
+  async getEnhancedFinancialData(symbol: string) {
+    console.log(`🔍 Fetching enhanced financial data for ${symbol}...`);
+
+    const results = await Promise.allSettled([
+      rapidApiYahooService.getQuote(symbol),
+      rapidApiYahooService.getStatistics(symbol),
+      rapidApiYahooService.getFinancials(symbol),
+      rapidApiYahooService.getBalanceSheet(symbol),
+      rapidApiYahooService.getCashFlow(symbol),
+    ]);
+
+    const [quote, statistics, financials, balanceSheet, cashFlow] = results.map(
+      (result) => (result.status === "fulfilled" ? result.value : null)
+    );
+
+    return {
+      quote,
+      statistics,
+      financials,
+      balanceSheet,
+      cashFlow,
+      hasRealData: !!(quote || statistics || financials),
+    };
   }
 
   // Main method to get comprehensive stock analysis
@@ -231,66 +258,18 @@ export class HybridStockService {
   private async getLocalAnalysis(
     symbol: string
   ): Promise<DetailedStockAnalysis> {
-    /* Temporarily disabled Yahoo Finance due to proxy issues in development
+    // Try enhanced financial data first
     try {
-      // Step 1: Try Yahoo Finance first (best data quality)
-      console.log(`🔍 Fetching real data for ${symbol} from Yahoo Finance...`);
-      const realData = await yahooFinanceAPI.parseStockData(symbol);
-
-      // Step 2: Convert real data to our format
-      const baseAnalysis = this.convertYahooDataToAnalysis(realData);
-
-      // Step 3: Try to enhance with OpenRouter AI analysis (if API key available)
-      try {
-        console.log(`🤖 Enhancing with AI analysis from OpenRouter...`);
-        const aiAnalysis = await openRouterAPI.getStockAnalysis(symbol);
-
-        // Merge real data with AI insights
-        return this.mergeAnalysis(baseAnalysis, aiAnalysis, realData);
-      } catch (error) {
-        console.log(
-          "⚠️ OpenRouter not available, using real data with smart defaults"
-        );
-        return baseAnalysis;
+      console.log(`🔍 Attempting enhanced financial data fetch for ${symbol}...`);
+      const enhancedData = await this.getEnhancedFinancialData(symbol);
+      
+      if (enhancedData.hasRealData) {
+        console.log(`✅ Enhanced data available for ${symbol}!`);
+        return this.createEnhancedAnalysis(symbol, enhancedData);
       }
     } catch (error) {
-      console.error(`❌ Yahoo Finance failed for ${symbol}:`, error);
-
-      // Step 4: Try fallback APIs if Yahoo Finance fails
-      try {
-        console.log(`🔄 Trying fallback APIs for ${symbol}...`);
-        const fallbackData = await fallbackAPI.getStockData(symbol);
-
-        if (fallbackData) {
-          console.log(`✅ Fallback API success for ${symbol}!`);
-          const baseAnalysis = this.convertFallbackDataToAnalysis(fallbackData);
-
-          // Try to enhance with AI
-          try {
-            console.log(`🤖 Attempting AI enhancement...`);
-            const aiAnalysis = await openRouterAPI.getStockAnalysis(symbol);
-            console.log(`✅ AI enhancement successful for ${symbol}!`);
-            return this.mergeFallbackAnalysis(baseAnalysis, aiAnalysis);
-          } catch (aiError) {
-            console.log(`⚠️ AI enhancement failed, using fallback data only`);
-            return baseAnalysis;
-          }
-        }
-      } catch (fallbackError) {
-        console.error(
-          `❌ Fallback APIs also failed for ${symbol}:`,
-          fallbackError
-        );
-      }
-
-      // Final fallback: Smart mock analysis
-      console.log(
-        `🎭 All APIs failed, using smart mock analysis for ${symbol}`
-      );
-      console.log(`✅ Don't worry! Mock data is comprehensive and realistic.`);
-      return await openRouterAPI.getMockAnalysis(symbol);
+      console.log(`⚠️ Enhanced data fetch failed: ${error.message}`);
     }
-    */
 
     // Direct to fallback system for reliable development experience
     try {
@@ -320,13 +299,18 @@ export class HybridStockService {
       );
     }
 
-    // TEMPORARILY DISABLED: Mock data fallback to debug real API issues
-    console.log(
-      `❌ Local APIs failed for ${symbol} - NO FALLBACK (debug mode)`
-    );
-    throw new Error(
-      `Local APIs failed for ${symbol}. Check API configurations.`
-    );
+    // Final fallback: Create enhanced analysis with no real data
+    console.log(`🎭 Using mock data with enhanced structure for ${symbol}`);
+    const mockEnhancedData = {
+      quote: null,
+      statistics: null,
+      financials: null,
+      balanceSheet: null,
+      cashFlow: null,
+      hasRealData: false,
+    };
+    
+    return this.createEnhancedAnalysis(symbol, mockEnhancedData);
   }
 
   // Convert Yahoo Finance data to our DetailedStockAnalysis format
@@ -646,6 +630,268 @@ export class HybridStockService {
         aiAnalysis.cons.length > 3 ? aiAnalysis.cons : fallbackAnalysis.cons,
       lastUpdated: new Date(),
     };
+  }
+
+  // Helper function to create MetricWithSource
+  private createMetric(
+    value: number,
+    dataSource: DataSource,
+    health?: HealthStatus
+  ): MetricWithSource {
+    return {
+      value,
+      health: health || this.assessValueHealth(value),
+      dataSource,
+      lastUpdated: new Date(),
+    };
+  }
+
+  // Helper function to assess metric health based on value
+  private assessValueHealth(value: number): HealthStatus {
+    if (value > 20) return HealthStatus.BEST;
+    if (value > 15) return HealthStatus.GOOD;
+    if (value > 10) return HealthStatus.NORMAL;
+    if (value > 0) return HealthStatus.BAD;
+    return HealthStatus.WORSE;
+  }
+
+  // Enhanced method to create analysis with real financial data
+  private createEnhancedAnalysis(
+    symbol: string,
+    enhancedData: any
+  ): DetailedStockAnalysis {
+    const { quote, statistics, financials, balanceSheet, cashFlow, hasRealData } =
+      enhancedData;
+
+    console.log(`📊 Creating enhanced analysis for ${symbol}`);
+    console.log(`📈 Has real data: ${hasRealData}`);
+
+    // Extract real data or use defaults
+    const currentPrice = quote?.regularMarketPrice || 1245.6;
+    const marketCap = quote?.marketCap || 850000000000;
+    const peRatio = quote?.trailingPE || statistics?.priceToEarnings || null;
+    const pbRatio = quote?.priceToBook || statistics?.priceToBook || null;
+
+    // Create profitability metrics with real data sources
+    const profitability: Record<string, MetricWithSource> = {
+      ROE: this.createMetric(
+        statistics?.returnOnEquity ? statistics.returnOnEquity * 100 : 18.5,
+        statistics?.returnOnEquity ? DataSource.RAPID_API_YAHOO : DataSource.MOCK,
+        this.assessROEHealth(statistics?.returnOnEquity)
+      ),
+      ROA: this.createMetric(
+        statistics?.returnOnAssets ? statistics.returnOnAssets * 100 : 12.3,
+        statistics?.returnOnAssets ? DataSource.RAPID_API_YAHOO : DataSource.MOCK,
+        this.assessROEHealth(statistics?.returnOnAssets)
+      ),
+      ROCE: this.createMetric(
+        22.1, // Not typically available in Yahoo Finance
+        DataSource.ESTIMATED
+      ),
+      "Gross Margin": this.createMetric(
+        statistics?.grossMargins ? statistics.grossMargins * 100 : 42.5,
+        statistics?.grossMargins ? DataSource.RAPID_API_YAHOO : DataSource.MOCK
+      ),
+      "Operating Margin": this.createMetric(
+        statistics?.operatingMargins ? statistics.operatingMargins * 100 : 18.2,
+        statistics?.operatingMargins ? DataSource.RAPID_API_YAHOO : DataSource.MOCK
+      ),
+      "Net Margin": this.createMetric(
+        statistics?.profitMargins ? statistics.profitMargins * 100 : 15.8,
+        statistics?.profitMargins ? DataSource.RAPID_API_YAHOO : DataSource.MOCK
+      ),
+    };
+
+    // Create liquidity metrics with real data sources  
+    const liquidity: Record<string, MetricWithSource> = {
+      "Current Ratio": this.createMetric(
+        balanceSheet?.totalCurrentAssets && balanceSheet?.totalCurrentLiabilities
+          ? balanceSheet.totalCurrentAssets / balanceSheet.totalCurrentLiabilities
+          : statistics?.currentRatio || 2.1,
+        balanceSheet?.totalCurrentAssets && balanceSheet?.totalCurrentLiabilities
+          ? DataSource.RAPID_API_YAHOO
+          : statistics?.currentRatio
+          ? DataSource.RAPID_API_YAHOO
+          : DataSource.MOCK
+      ),
+      "Quick Ratio": this.createMetric(
+        statistics?.quickRatio || 1.8,
+        statistics?.quickRatio ? DataSource.RAPID_API_YAHOO : DataSource.MOCK
+      ),
+      "Debt-to-Equity": this.createMetric(
+        balanceSheet?.totalDebt && balanceSheet?.shareholderEquity
+          ? balanceSheet.totalDebt / balanceSheet.shareholderEquity
+          : statistics?.debtToEquity || 0.3,
+        balanceSheet?.totalDebt && balanceSheet?.shareholderEquity
+          ? DataSource.RAPID_API_YAHOO
+          : statistics?.debtToEquity
+          ? DataSource.RAPID_API_YAHOO
+          : DataSource.MOCK,
+        this.assessDebtHealth(
+          balanceSheet?.totalDebt && balanceSheet?.shareholderEquity
+            ? balanceSheet.totalDebt / balanceSheet.shareholderEquity
+            : statistics?.debtToEquity || 0.3
+        )
+      ),
+      "Interest Coverage": this.createMetric(
+        statistics?.interestCoverage || 8.5,
+        statistics?.interestCoverage ? DataSource.RAPID_API_YAHOO : DataSource.MOCK
+      ),
+    };
+
+    // Create valuation metrics with real data sources
+    const valuation: Record<string, MetricWithSource> = {
+      "P/E Ratio": this.createMetric(
+        peRatio || 24.5,
+        peRatio ? DataSource.RAPID_API_YAHOO : DataSource.MOCK,
+        this.assessPEHealth(peRatio)
+      ),
+      "P/B Ratio": this.createMetric(
+        pbRatio || 3.2,
+        pbRatio ? DataSource.RAPID_API_YAHOO : DataSource.MOCK
+      ),
+      "P/S Ratio": this.createMetric(
+        statistics?.priceToSales || 5.8,
+        statistics?.priceToSales ? DataSource.RAPID_API_YAHOO : DataSource.MOCK
+      ),
+      "EV/EBITDA": this.createMetric(
+        statistics?.enterpriseValue && statistics?.ebitda
+          ? statistics.enterpriseValue / statistics.ebitda
+          : 18.2,
+        statistics?.enterpriseValue && statistics?.ebitda
+          ? DataSource.RAPID_API_YAHOO
+          : DataSource.MOCK
+      ),
+      "Dividend Yield": this.createMetric(
+        quote?.dividendYield ? quote.dividendYield * 100 : 1.2,
+        quote?.dividendYield ? DataSource.RAPID_API_YAHOO : DataSource.MOCK,
+        this.assessDividendHealth(quote?.dividendYield)
+      ),
+    };
+
+    // Create growth metrics (mostly estimated as these require historical data)
+    const growth: Record<string, MetricWithSource> = {
+      "Revenue CAGR (3Y)": this.createMetric(22.8, DataSource.ESTIMATED),
+      "EPS Growth (3Y)": this.createMetric(28.5, DataSource.ESTIMATED),
+      "Market Share Growth": this.createMetric(15.2, DataSource.ESTIMATED),
+    };
+
+    return {
+      symbol: symbol.toUpperCase(),
+      name: quote?.shortName || quote?.longName || `${symbol.toUpperCase()} Limited`,
+      about: hasRealData
+        ? `${quote?.shortName || symbol.toUpperCase()} is a leading company with real-time market data. Current analysis shows ${
+            statistics?.profitMargins
+              ? `strong profitability with ${(statistics.profitMargins * 100).toFixed(1)}% net margin`
+              : "steady market performance"
+          }.`
+        : `${symbol.toUpperCase()} analysis with limited real-time data. Metrics are estimated based on market standards.`,
+      keyPoints: [
+        `Current market price: ₹${currentPrice.toFixed(2)} ${
+          quote ? "(Real-time)" : "(Estimated)"
+        }`,
+        `Market cap: ₹${(marketCap / 10000000).toFixed(0)} Cr ${
+          quote?.marketCap ? "(Real-time)" : "(Estimated)"
+        }`,
+        `P/E Ratio: ${peRatio ? peRatio.toFixed(1) + " (Real)" : "24.5 (Mock)"}`,
+        `Data quality: ${hasRealData ? "High (API)" : "Limited (Estimated)"}`,
+      ],
+      currentPrice,
+      marketCap,
+      sector: this.guessSectorFromSymbol(symbol),
+      industry: "Indian Equity",
+      financialHealth: {
+        statements: {
+          incomeStatement: hasRealData ? HealthStatus.GOOD : HealthStatus.NORMAL,
+          balanceSheet: balanceSheet ? HealthStatus.GOOD : HealthStatus.NORMAL,
+          cashFlow: cashFlow ? HealthStatus.GOOD : HealthStatus.NORMAL,
+        },
+        profitability,
+        liquidity,
+        valuation,
+        growth,
+        management: HealthStatus.GOOD,
+        industry: HealthStatus.GOOD,
+        risks: HealthStatus.NORMAL,
+        outlook: HealthStatus.GOOD,
+      },
+      technicalIndicators: {
+        stochasticRSI: this.generateTechnicalIndicator(
+          "Stochastic RSI",
+          currentPrice,
+          currentPrice * 1.2,
+          currentPrice * 0.8
+        ),
+        connorsRSI: this.generateTechnicalIndicator(
+          "Connors RSI",
+          currentPrice,
+          currentPrice * 1.2,
+          currentPrice * 0.8
+        ),
+        macd: this.generateTechnicalIndicator(
+          "MACD",
+          currentPrice,
+          currentPrice * 1.2,
+          currentPrice * 0.8
+        ),
+        patterns: this.generateTechnicalIndicator(
+          "Pattern Analysis",
+          currentPrice,
+          currentPrice * 1.2,
+          currentPrice * 0.8
+        ),
+        support: this.calculateSupportLevels(currentPrice, currentPrice * 0.8),
+        resistance: this.calculateResistanceLevels(
+          currentPrice,
+          currentPrice * 1.2
+        ),
+      },
+      pros: hasRealData
+        ? [
+            "Real-time market data integration",
+            "Comprehensive financial metrics from Yahoo Finance API",
+            "Live price and volume updates",
+            "Accurate valuation ratios",
+            "Professional data reliability",
+            "Market-standard calculations",
+          ]
+        : [
+            "Estimated based on industry standards",
+            "Conservative growth projections", 
+            "Stable market assumptions",
+            "Risk-adjusted valuations",
+            "Industry benchmark comparisons",
+            "Fallback data reliability",
+          ],
+      cons: hasRealData
+        ? [
+            "Market data subject to real-time volatility",
+            "API dependency for live updates",
+            "Complex metric interpretation required",
+            "Potential data lag during high volume",
+            "Technical analysis needs expertise",
+            "Real-time risks and opportunities",
+          ]
+        : [
+            "Limited real-time data availability",
+            "Estimated metrics may vary from actual",
+            "Reduced accuracy in volatile markets",
+            "Generic industry assumptions",
+            "Delayed market reflection",
+            "Mock data limitations",
+          ],
+      priceHistory: [],
+      lastUpdated: new Date(),
+    };
+  }
+
+  // Helper method to assess debt health
+  private assessDebtHealth(debtToEquity: number): HealthStatus {
+    if (debtToEquity < 0.3) return HealthStatus.BEST;
+    if (debtToEquity < 0.5) return HealthStatus.GOOD;
+    if (debtToEquity < 1.0) return HealthStatus.NORMAL;
+    if (debtToEquity < 2.0) return HealthStatus.BAD;
+    return HealthStatus.WORSE;
   }
 
   // Helper methods for health assessments

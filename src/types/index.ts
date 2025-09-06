@@ -71,10 +71,10 @@ export interface DetailedStockAnalysis {
       balanceSheet: HealthStatus;
       cashFlow: HealthStatus;
     };
-    profitability: Record<string, { value: number; health: HealthStatus }>;
-    liquidity: Record<string, { value: number; health: HealthStatus }>;
-    valuation: Record<string, { value: number; health: HealthStatus }>;
-    growth: Record<string, { value: number; health: HealthStatus }>;
+    profitability: Record<string, MetricWithSource>;
+    liquidity: Record<string, MetricWithSource>;
+    valuation: Record<string, MetricWithSource>;
+    growth: Record<string, MetricWithSource>;
     management: HealthStatus;
     industry: HealthStatus;
     risks: HealthStatus;
@@ -106,6 +106,24 @@ export enum SignalType {
   BUY = "BUY",
   SELL = "SELL",
   HOLD = "HOLD",
+}
+
+// Data Source Types
+export enum DataSource {
+  YAHOO_FINANCE_API = "YAHOO_FINANCE_API",
+  RAPID_API_YAHOO = "RAPID_API_YAHOO",
+  CALCULATED = "CALCULATED",
+  ESTIMATED = "ESTIMATED",
+  MOCK = "MOCK",
+  AI_GENERATED = "AI_GENERATED",
+}
+
+// Metric with data source information
+export interface MetricWithSource {
+  value: number;
+  health: HealthStatus;
+  dataSource: DataSource;
+  lastUpdated?: Date;
 }
 
 // Sector Types
@@ -444,34 +462,13 @@ export interface TableColumn<T> {
   width?: string;
 }
 
-// Export all types
+// Export additional types not already exported as interfaces/enums above
 export type {
-  Stock,
-  TechnicalData,
-  FundamentalData,
-  IncomeStatement,
-  BalanceSheet,
-  CashFlowStatement,
-  AIAnalysis,
-  StockRecommendation,
-  RecommendationResponse,
-  MarketSentiment,
-  SearchFilters,
-  SortOption,
-  UserPreferences,
-  PriceData,
-  ChartTimeRange,
-  APIResponse,
-  PaginatedResponse,
-  NewsItem,
-  EarningsEvent,
-  APIError,
+  VolumeProfile,
+  TechnicalIndicatorHealth,
   LoadingState,
   AsyncState,
   BaseComponentProps,
   StockCardProps,
   TableColumn,
-  VolumeProfile,
-  TechnicalIndicatorHealth,
-  DetailedStockAnalysis,
 };

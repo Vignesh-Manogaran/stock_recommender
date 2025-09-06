@@ -14,9 +14,10 @@ import {
   Shield,
   Activity,
 } from "lucide-react";
-import { DetailedStockAnalysis, HealthStatus } from "@/types";
+import { DetailedStockAnalysis, HealthStatus, MetricWithSource } from "@/types";
 import Card, { CardContent, CardHeader } from "@/components/ui/Card";
 import FundamentalModal from "@/components/ui/FundamentalModal";
+import MetricCard from "@/components/ui/MetricCard";
 
 interface FundamentalAnalysisTabProps {
   stockAnalysis: DetailedStockAnalysis;
@@ -279,9 +280,10 @@ const FundamentalAnalysisTab: React.FC<FundamentalAnalysisTabProps> = ({
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {Object.entries(stockAnalysis.financialHealth.profitability).map(
                 ([key, metric]) => (
-                  <div
+                  <MetricCard
                     key={key}
-                    className="bg-gray-50 rounded-lg p-4 cursor-pointer hover:bg-gray-100 hover:shadow-md transition-all duration-200"
+                    title={key}
+                    metric={metric as MetricWithSource}
                     onClick={() =>
                       handleMetricClick(
                         key,
@@ -294,31 +296,15 @@ const FundamentalAnalysisTab: React.FC<FundamentalAnalysisTabProps> = ({
                         metric?.health || HealthStatus.NORMAL
                       )
                     }
-                  >
-                    <div className="flex items-center justify-between mb-2">
-                      <h4 className="text-sm font-medium text-gray-900">
-                        {key}
-                      </h4>
-                      {getHealthIcon(metric?.health || HealthStatus.NORMAL)}
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-2xl font-bold text-gray-900">
-                        {key.includes("Margin") ||
-                        key === "ROE" ||
-                        key === "ROA" ||
-                        key === "ROCE"
-                          ? formatPercent(metric?.value || 0)
-                          : (metric?.value || 0).toFixed(1)}
-                      </span>
-                      <span
-                        className={`text-xs px-2 py-1 rounded-full font-medium ${getHealthColor(
-                          metric?.health || HealthStatus.NORMAL
-                        )}`}
-                      >
-                        {metric?.health || HealthStatus.NORMAL}
-                      </span>
-                    </div>
-                  </div>
+                    formatter={(value) =>
+                      key.includes("Margin") ||
+                      key === "ROE" ||
+                      key === "ROA" ||
+                      key === "ROCE"
+                        ? formatPercent(value)
+                        : value.toFixed(1)
+                    }
+                  />
                 )
               )}
             </div>
@@ -341,9 +327,10 @@ const FundamentalAnalysisTab: React.FC<FundamentalAnalysisTabProps> = ({
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               {Object.entries(stockAnalysis.financialHealth.liquidity).map(
                 ([key, metric]) => (
-                  <div
+                  <MetricCard
                     key={key}
-                    className="bg-blue-50 rounded-lg p-4 border border-blue-100 cursor-pointer hover:bg-blue-100 hover:shadow-md transition-all duration-200"
+                    title={key}
+                    metric={metric as MetricWithSource}
                     onClick={() =>
                       handleMetricClick(
                         key,
@@ -353,27 +340,8 @@ const FundamentalAnalysisTab: React.FC<FundamentalAnalysisTabProps> = ({
                         metric?.health || HealthStatus.NORMAL
                       )
                     }
-                  >
-                    <div className="flex items-center justify-between mb-2">
-                      <h4 className="text-sm font-medium text-gray-900">
-                        {key}
-                      </h4>
-                      {getHealthIcon(metric?.health || HealthStatus.NORMAL)}
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-xl font-bold text-blue-600">
-                        {(metric?.value || 0).toFixed(1)}
-                        {key === "Interest Coverage" ? "x" : ""}
-                      </span>
-                      <span
-                        className={`text-xs px-2 py-1 rounded-full font-medium ${getHealthColor(
-                          metric?.health || HealthStatus.NORMAL
-                        )}`}
-                      >
-                        {metric?.health || HealthStatus.NORMAL}
-                      </span>
-                    </div>
-                  </div>
+                    suffix={key === "Interest Coverage" ? "x" : ""}
+                  />
                 )
               )}
             </div>
@@ -396,9 +364,10 @@ const FundamentalAnalysisTab: React.FC<FundamentalAnalysisTabProps> = ({
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
               {Object.entries(stockAnalysis.financialHealth.valuation).map(
                 ([key, metric]) => (
-                  <div
+                  <MetricCard
                     key={key}
-                    className="bg-purple-50 rounded-lg p-4 border border-purple-100 cursor-pointer hover:bg-purple-100 hover:shadow-md transition-all duration-200"
+                    title={key}
+                    metric={metric as MetricWithSource}
                     onClick={() =>
                       handleMetricClick(
                         key,
@@ -408,28 +377,12 @@ const FundamentalAnalysisTab: React.FC<FundamentalAnalysisTabProps> = ({
                         metric?.health || HealthStatus.NORMAL
                       )
                     }
-                  >
-                    <div className="flex items-center justify-between mb-2">
-                      <h4 className="text-sm font-medium text-gray-900">
-                        {key}
-                      </h4>
-                      {getHealthIcon(metric?.health || HealthStatus.NORMAL)}
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-xl font-bold text-purple-600">
-                        {key === "Dividend Yield"
-                          ? formatPercent(metric?.value || 0)
-                          : (metric?.value || 0).toFixed(1)}
-                      </span>
-                      <span
-                        className={`text-xs px-2 py-1 rounded-full font-medium ${getHealthColor(
-                          metric?.health || HealthStatus.NORMAL
-                        )}`}
-                      >
-                        {metric?.health || HealthStatus.NORMAL}
-                      </span>
-                    </div>
-                  </div>
+                    formatter={(value) =>
+                      key === "Dividend Yield"
+                        ? formatPercent(value)
+                        : value.toFixed(1)
+                    }
+                  />
                 )
               )}
             </div>
@@ -452,40 +405,24 @@ const FundamentalAnalysisTab: React.FC<FundamentalAnalysisTabProps> = ({
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {Object.entries(stockAnalysis.financialHealth.growth).map(
                 ([key, metric]) => (
-                  <div
-                    key={key}
-                    className="bg-green-50 rounded-lg p-4 border border-green-100 cursor-pointer hover:bg-green-100 hover:shadow-md transition-all duration-200"
-                    onClick={() =>
-                      handleMetricClick(
-                        key.includes("CAGR")
-                          ? "Revenue CAGR"
-                          : key.includes("EPS")
-                          ? "EPS Growth"
-                          : "Market Share Growth",
-                        formatPercent(metric?.value || 0),
-                        metric?.health || HealthStatus.NORMAL
-                      )
-                    }
-                  >
-                    <div className="flex items-center justify-between mb-2">
-                      <h4 className="text-sm font-medium text-gray-900">
-                        {key}
-                      </h4>
-                      {getHealthIcon(metric?.health || HealthStatus.NORMAL)}
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-2xl font-bold text-green-600">
-                        {formatPercent(metric?.value || 0)}
-                      </span>
-                      <span
-                        className={`text-xs px-2 py-1 rounded-full font-medium ${getHealthColor(
+                  <div key={key} className="relative">
+                    <MetricCard
+                      title={key}
+                      metric={metric as MetricWithSource}
+                      onClick={() =>
+                        handleMetricClick(
+                          key.includes("CAGR")
+                            ? "Revenue CAGR"
+                            : key.includes("EPS")
+                            ? "EPS Growth"
+                            : "Market Share Growth",
+                          formatPercent(metric?.value || 0),
                           metric?.health || HealthStatus.NORMAL
-                        )}`}
-                      >
-                        {metric?.health || HealthStatus.NORMAL}
-                      </span>
-                    </div>
-                    <p className="text-xs text-gray-600 mt-1">
+                        )
+                      }
+                      formatter={formatPercent}
+                    />
+                    <p className="text-xs text-gray-600 mt-2 px-1">
                       {key.includes("CAGR")
                         ? "3-Year Compound Annual Growth"
                         : "Year-over-Year Growth"}
