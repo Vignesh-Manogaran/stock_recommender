@@ -697,7 +697,8 @@ const StockDetailPage: React.FC = () => {
                         <p className="text-sm font-bold text-yellow-900">
                           {stockAnalysis.financialHealth.valuation[
                             "Dividend Yield"
-                          ]?.value?.toFixed(1) || "1.2"}%
+                          ]?.value?.toFixed(1) || "1.2"}
+                          %
                         </p>
                       </div>
                     </div>
@@ -723,7 +724,8 @@ const StockDetailPage: React.FC = () => {
                         <p className="text-sm font-bold text-emerald-900">
                           {stockAnalysis.financialHealth.profitability.ROCE?.value?.toFixed(
                             1
-                          ) || "7.5"}%
+                          ) || "7.5"}
+                          %
                         </p>
                       </div>
                       <div
@@ -745,7 +747,8 @@ const StockDetailPage: React.FC = () => {
                         <p className="text-sm font-bold text-emerald-900">
                           {stockAnalysis.financialHealth.profitability.ROE?.value?.toFixed(
                             1
-                          ) || "14.4"}%
+                          ) || "14.4"}
+                          %
                         </p>
                       </div>
                     </div>
