@@ -11,7 +11,9 @@
       "Bash(pkill:*)",
       "Bash(rm:*)",
       "WebFetch(domain:algotrading101.com)",
-      "Bash(cd:*)"
+      "Bash(cd:*)",
+      "Read(//Users/vigneshhome/Desktop/**)",
+      "Bash(sed:*)"
     ],
     "deny": [],
     "ask": []

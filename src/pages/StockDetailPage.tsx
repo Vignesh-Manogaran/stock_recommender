@@ -27,7 +27,8 @@ import StockPriceChart from "@/components/stock/StockPriceChart";
 import FundamentalAnalysisTab from "@/components/tabs/FundamentalAnalysisTab";
 import TechnicalAnalysisTab from "@/components/tabs/TechnicalAnalysisTab";
 import DataSourceBadge from "@/components/ui/DataSourceBadge";
-import { getStockAnalysis } from "@/services/hybridStockService";
+import RealMetricsGrid from "@/components/ui/RealMetricsGrid";
+import { getStockAnalysis, getRealStockMetrics } from "@/services/hybridStockService";
 import { DataSource } from "@/types";
 
 const StockDetailPage: React.FC = () => {
@@ -38,6 +39,7 @@ const StockDetailPage: React.FC = () => {
   );
   const [stockAnalysis, setStockAnalysis] =
     useState<DetailedStockAnalysis | null>(null);
+  const [realMetrics, setRealMetrics] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
@@ -134,9 +136,21 @@ const StockDetailPage: React.FC = () => {
     try {
       console.log(`🔍 Loading comprehensive analysis for ${symbol}...`);
 
-      // Use our new hybrid service - Real Yahoo Finance data + AI analysis
-      const analysis = await getStockAnalysis(symbol);
+      // Load both comprehensive analysis and real metrics in parallel
+      const [analysis, realMetricsData] = await Promise.all([
+        getStockAnalysis(symbol),
+        getRealStockMetrics(symbol)
+      ]);
+
       setStockAnalysis(analysis);
+
+      if (realMetricsData) {
+        setRealMetrics(realMetricsData);
+        console.log(`✅ Real metrics loaded for ${symbol}:`, Object.keys(realMetricsData.metrics));
+      } else {
+        console.log(`⚠️ No real metrics available for ${symbol}`);
+        setRealMetrics(null);
+      }
 
       console.log(`✅ Successfully loaded analysis for ${symbol}:`, analysis);
     } catch (err) {
@@ -145,6 +159,7 @@ const StockDetailPage: React.FC = () => {
 
       // Load mock data as fallback
       setStockAnalysis(createMockAnalysis(symbol));
+      setRealMetrics(null);
     } finally {
       setLoading(false);
     }
@@ -584,234 +599,43 @@ const StockDetailPage: React.FC = () => {
               transition={{ duration: 0.5, delay: 0.1 }}
             >
               <Card>
-                <CardHeader title="முக்கிய அன்கங்கள்" />
+                <CardHeader title="முக்கிய அன்கங்கள் (100% Real API Data)" />
                 <CardContent>
-                  <div className="space-y-4">
-                    {/* Market & Pricing Stats */}
-                    <div className="grid grid-cols-2 gap-3">
-                      <div
-                        className="p-3 bg-blue-50 rounded-lg border border-blue-100 cursor-pointer hover:bg-blue-100 transition-all duration-200 hover:shadow-md"
-                        onClick={() =>
-                          handleStatClick(
-                            "Market Cap",
-                            formatMarketCap(stockAnalysis.marketCap)
-                          )
-                        }
-                      >
-                        <p className="text-xs text-blue-600 mb-1">
-                          Market Cap (சந்தை மதிப்பு)
-                        </p>
-                        <p className="text-sm font-bold text-blue-900">
-                          {formatMarketCap(stockAnalysis.marketCap)}
-                        </p>
+                  {realMetrics ? (
+                    <>
+                      <div className="mb-4 p-3 bg-green-50 rounded-lg border border-green-200">
+                        <div className="flex items-center space-x-2">
+                          <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+                          <span className="text-sm font-medium text-green-700">
+                            All metrics below are real-time data from Yahoo Finance API
+                          </span>
+                          <DataSourceBadge dataSource={DataSource.RAPID_API_YAHOO} showLabel />
+                        </div>
                       </div>
-                      <div
-                        className="p-3 bg-green-50 rounded-lg border border-green-100 cursor-pointer hover:bg-green-100 transition-all duration-200 hover:shadow-md"
-                        onClick={() =>
-                          handleStatClick(
-                            "Current Price",
-                            `₹${stockAnalysis.currentPrice.toLocaleString(
-                              "en-IN",
-                              { maximumFractionDigits: 2 }
-                            )}`
-                          )
-                        }
-                      >
-                        <p className="text-xs text-green-600 mb-1">
-                          தற்போதைய விலை
-                        </p>
-                        <p className="text-sm font-bold text-green-900">
-                          ₹
-                          {stockAnalysis.currentPrice.toLocaleString("en-IN", {
-                            maximumFractionDigits: 2,
-                          })}
-                        </p>
+                      <RealMetricsGrid
+                        metrics={realMetrics.metrics}
+                        dataSource={realMetrics.dataSource}
+                        onMetricClick={handleStatClick}
+                      />
+                    </>
+                  ) : (
+                    <div className="text-center py-8">
+                      <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <span className="text-2xl">🔴</span>
+                      </div>
+                      <h3 className="text-lg font-medium text-gray-900 mb-2">
+                        No Real API Data Available
+                      </h3>
+                      <p className="text-gray-600 mb-4">
+                        Could not fetch real-time data from Yahoo Finance API for this symbol.
+                      </p>
+                      <div className="text-sm text-gray-500">
+                        <p>• Check your internet connection</p>
+                        <p>• Verify the stock symbol is correct</p>
+                        <p>• Try refreshing the page</p>
                       </div>
                     </div>
-
-                    {/* Price Range & Valuation */}
-                    <div className="grid grid-cols-2 gap-3">
-                      <div
-                        className="p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100 transition-all duration-200 hover:shadow-md"
-                        onClick={() =>
-                          handleStatClick(
-                            "High / Low",
-                            `₹${(stockAnalysis.currentPrice * 1.15).toFixed(
-                              0
-                            )} / ₹${(stockAnalysis.currentPrice * 0.85).toFixed(
-                              0
-                            )}`
-                          )
-                        }
-                      >
-                        <p className="text-xs text-gray-600 mb-1">
-                          உயர்ந்த / குறைந்த விலை
-                        </p>
-                        <p className="text-sm font-semibold text-gray-900">
-                          ₹{(stockAnalysis.currentPrice * 1.15).toFixed(0)} / ₹
-                          {(stockAnalysis.currentPrice * 0.85).toFixed(0)}
-                        </p>
-                      </div>
-                      <div
-                        className="p-3 bg-purple-50 rounded-lg border border-purple-100 cursor-pointer hover:bg-purple-100 transition-all duration-200 hover:shadow-md"
-                        onClick={() =>
-                          handleStatClick(
-                            "Stock P/E",
-                            stockAnalysis.financialHealth.valuation[
-                              "P/E Ratio"
-                            ]?.value?.toFixed(1) || "N/A"
-                          )
-                        }
-                      >
-                        <p className="text-xs text-purple-600 mb-1">
-                          P/E Ratio (விலை vs வருமானம்)
-                        </p>
-                        <p className="text-sm font-bold text-purple-900">
-                          {stockAnalysis.financialHealth.valuation[
-                            "P/E Ratio"
-                          ]?.value?.toFixed(1) || "N/A"}
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Book Value & Dividend */}
-                    <div className="grid grid-cols-2 gap-3">
-                      <div
-                        className="p-3 bg-indigo-50 rounded-lg border border-indigo-100 cursor-pointer hover:bg-indigo-100 transition-all duration-200 hover:shadow-md"
-                        onClick={() =>
-                          handleStatClick(
-                            "Book Value",
-                            `₹${
-                              stockAnalysis.financialHealth.valuation[
-                                "P/B Ratio"
-                              ]
-                                ? (
-                                    stockAnalysis.currentPrice /
-                                    stockAnalysis.financialHealth.valuation[
-                                      "P/B Ratio"
-                                    ]?.value
-                                  ).toFixed(0)
-                                : "341"
-                            }`
-                          )
-                        }
-                      >
-                        <p className="text-xs text-indigo-600 mb-1">
-                          Book Value (புத்தக மதிப்பு)
-                        </p>
-                        <p className="text-sm font-bold text-indigo-900">
-                          ₹
-                          {stockAnalysis.financialHealth.valuation["P/B Ratio"]
-                            ? (
-                                stockAnalysis.currentPrice /
-                                stockAnalysis.financialHealth.valuation[
-                                  "P/B Ratio"
-                                ]?.value
-                              ).toFixed(0)
-                            : "341"}
-                        </p>
-                      </div>
-                      <div
-                        className="p-3 bg-yellow-50 rounded-lg border border-yellow-100 cursor-pointer hover:bg-yellow-100 transition-all duration-200 hover:shadow-md"
-                        onClick={() =>
-                          handleStatClick(
-                            "Dividend Yield",
-                            `${
-                              stockAnalysis.financialHealth.valuation[
-                                "Dividend Yield"
-                              ]?.value?.toFixed(1) || "1.2"
-                            }%`
-                          )
-                        }
-                      >
-                        <p className="text-xs text-yellow-600 mb-1">
-                          Dividend Yield (வருடாந்தர வருமானம்)
-                        </p>
-                        <p className="text-sm font-bold text-yellow-900">
-                          {stockAnalysis.financialHealth.valuation[
-                            "Dividend Yield"
-                          ]?.value?.toFixed(1) || "1.2"}
-                          %
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Returns & Face Value */}
-                    <div className="grid grid-cols-2 gap-3">
-                      <div
-                        className="p-3 bg-emerald-50 rounded-lg border border-emerald-100 cursor-pointer hover:bg-emerald-100 transition-all duration-200 hover:shadow-md"
-                        onClick={() =>
-                          handleStatClick(
-                            "ROCE",
-                            `${
-                              stockAnalysis.financialHealth.profitability.ROCE?.value?.toFixed(
-                                1
-                              ) || "7.5"
-                            }%`
-                          )
-                        }
-                      >
-                        <p className="text-xs text-emerald-600 mb-1">
-                          ROCE (மூலதன வருமானம்)
-                        </p>
-                        <p className="text-sm font-bold text-emerald-900">
-                          {stockAnalysis.financialHealth.profitability.ROCE?.value?.toFixed(
-                            1
-                          ) || "7.5"}
-                          %
-                        </p>
-                      </div>
-                      <div
-                        className="p-3 bg-emerald-50 rounded-lg border border-emerald-100 cursor-pointer hover:bg-emerald-100 transition-all duration-200 hover:shadow-md"
-                        onClick={() =>
-                          handleStatClick(
-                            "ROE",
-                            `${
-                              stockAnalysis.financialHealth.profitability.ROE?.value?.toFixed(
-                                1
-                              ) || "14.4"
-                            }%`
-                          )
-                        }
-                      >
-                        <p className="text-xs text-emerald-600 mb-1">
-                          ROE (பங்குதாரர் வருமானம்)
-                        </p>
-                        <p className="text-sm font-bold text-emerald-900">
-                          {stockAnalysis.financialHealth.profitability.ROE?.value?.toFixed(
-                            1
-                          ) || "14.4"}
-                          %
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Sector & Face Value */}
-                    <div className="grid grid-cols-2 gap-3">
-                      <div
-                        className="p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100 transition-all duration-200 hover:shadow-md"
-                        onClick={() =>
-                          handleStatClick("Sector", stockAnalysis.sector)
-                        }
-                      >
-                        <p className="text-xs text-gray-600 mb-1">தொழில்துறை</p>
-                        <p className="text-sm font-semibold text-gray-900">
-                          {stockAnalysis.sector}
-                        </p>
-                      </div>
-                      <div
-                        className="p-3 bg-orange-50 rounded-lg border border-orange-100 cursor-pointer hover:bg-orange-100 transition-all duration-200 hover:shadow-md"
-                        onClick={() => handleStatClick("Face Value", "₹1.00")}
-                      >
-                        <p className="text-xs text-orange-600 mb-1">
-                          Face Value (முக மதிப்பு)
-                        </p>
-                        <p className="text-sm font-bold text-orange-900">
-                          ₹1.00
-                        </p>
-                      </div>
-                    </div>
-                  </div>
+                  )}
                 </CardContent>
               </Card>
             </motion.div>

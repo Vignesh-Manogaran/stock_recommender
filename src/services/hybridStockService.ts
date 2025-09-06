@@ -1464,6 +1464,97 @@ export const getStockChartData = async (
   return await hybridStockService.getChartData(symbol, range, interval);
 };
 
+// Get only real API metrics (no mock data)
+export const getRealStockMetrics = async (symbol: string) => {
+  console.log(`🔍 Fetching ONLY real metrics for ${symbol}`);
+  
+  try {
+    const enhancedData = await hybridStockService.getEnhancedFinancialData(symbol);
+    
+    if (!enhancedData.hasRealData) {
+      console.log(`❌ No real data available for ${symbol}`);
+      return null;
+    }
+
+    const { quote, statistics } = enhancedData;
+    
+    // Extract only confirmed real metrics from Yahoo Finance API
+    const realMetrics = {
+      // Basic price and market data
+      currentPrice: quote?.regularMarketPrice || null,
+      marketCap: quote?.marketCap || null,
+      volume: quote?.regularMarketVolume || null,
+      
+      // Price ranges (real 52-week high/low)
+      fiftyTwoWeekHigh: quote?.fiftyTwoWeekHigh || null,
+      fiftyTwoWeekLow: quote?.fiftyTwoWeekLow || null,
+      regularMarketDayHigh: quote?.regularMarketDayHigh || null,
+      regularMarketDayLow: quote?.regularMarketDayLow || null,
+      
+      // Valuation ratios
+      peRatio: quote?.trailingPE || statistics?.priceToEarnings || null,
+      pbRatio: quote?.priceToBook || statistics?.priceToBook || null,
+      psRatio: statistics?.priceToSales || null,
+      pegRatio: statistics?.pegRatio || null,
+      
+      // Profitability metrics
+      returnOnEquity: statistics?.returnOnEquity ? statistics.returnOnEquity * 100 : null,
+      returnOnAssets: statistics?.returnOnAssets ? statistics.returnOnAssets * 100 : null,
+      profitMargins: statistics?.profitMargins ? statistics.profitMargins * 100 : null,
+      operatingMargins: statistics?.operatingMargins ? statistics.operatingMargins * 100 : null,
+      grossMargins: statistics?.grossMargins ? statistics.grossMargins * 100 : null,
+      
+      // Dividends
+      dividendYield: quote?.dividendYield ? quote.dividendYield * 100 : null,
+      
+      // Financial health
+      currentRatio: statistics?.currentRatio || null,
+      quickRatio: statistics?.quickRatio || null,
+      debtToEquity: statistics?.debtToEquity || null,
+      
+      // Company info
+      companyName: quote?.shortName || quote?.longName || null,
+      currency: quote?.currency || 'INR',
+      exchange: quote?.fullExchangeName || quote?.exchangeName || null,
+      
+      // Market performance
+      beta: statistics?.beta || null,
+      
+      // Enterprise metrics
+      enterpriseValue: statistics?.enterpriseValue || null,
+      ebitda: statistics?.ebitda || null,
+      
+      // Book value (calculated from real P/B ratio)
+      bookValuePerShare: (quote?.regularMarketPrice && statistics?.priceToBook) 
+        ? quote.regularMarketPrice / statistics.priceToBook 
+        : null,
+        
+      // Additional real metrics
+      earningsPerShare: statistics?.trailingEps || null,
+      forwardPE: statistics?.forwardPE || null,
+      priceToFreeCashflow: statistics?.priceToFreeCashFlow || null,
+    };
+
+    // Filter out null values to return only metrics with real data
+    const filteredMetrics = Object.fromEntries(
+      Object.entries(realMetrics).filter(([_, value]) => value !== null)
+    );
+
+    console.log(`✅ Real metrics available for ${symbol}:`, Object.keys(filteredMetrics));
+    
+    return {
+      symbol,
+      metrics: filteredMetrics,
+      dataSource: DataSource.RAPID_API_YAHOO,
+      timestamp: new Date(),
+    };
+    
+  } catch (error) {
+    console.error(`❌ Failed to get real metrics for ${symbol}:`, error);
+    return null;
+  }
+};
+
 // Export for testing in console
 export const testStockAPI = async (symbol: string = "TCS") => {
   console.log(`🧪 Testing all data sources for ${symbol}...`);
