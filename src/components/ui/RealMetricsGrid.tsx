@@ -1,27 +1,91 @@
 import React from "react";
-import { DataSource } from "@/types";
+import { DataSource, MetricWithSource } from "@/types";
 import DataSourceBadge from "./DataSourceBadge";
+import { XCircle, CheckCircle, AlertTriangle } from "lucide-react";
+import Badge from "./Badge";
 
-interface RealMetric {
-  key: string;
-  label: string;
-  value: string;
-  bgColor: string;
-  textColor: string;
-  borderColor: string;
-}
 
 interface RealMetricsGridProps {
-  metrics: Record<string, number>;
-  dataSource: DataSource;
+  metrics: Record<string, MetricWithSource>;
+  title?: string;
   onMetricClick?: (key: string, value: string) => void;
 }
 
 const RealMetricsGrid: React.FC<RealMetricsGridProps> = ({
   metrics,
-  dataSource,
+  title,
   onMetricClick,
 }) => {
+
+  const getDataSourceBadge = (metric: MetricWithSource) => {
+    if (metric.isNA) {
+      return (
+        <Badge variant="secondary" className="flex items-center gap-1 bg-red-100 text-red-800 text-xs">
+          <XCircle className="w-3 h-3" />
+          N/A
+        </Badge>
+      );
+    }
+
+    switch (metric.dataSource) {
+      case DataSource.RAPID_API_YAHOO:
+        return (
+          <Badge variant="secondary" className="flex items-center gap-1 bg-green-100 text-green-800 text-xs">
+            <CheckCircle className="w-3 h-3" />
+            Real API
+          </Badge>
+        );
+      case DataSource.YAHOO_FINANCE_API:
+        return (
+          <Badge variant="secondary" className="flex items-center gap-1 bg-green-100 text-green-800 text-xs">
+            <CheckCircle className="w-3 h-3" />
+            Real API
+          </Badge>
+        );
+      case DataSource.CALCULATED:
+        return (
+          <Badge variant="secondary" className="flex items-center gap-1 bg-blue-100 text-blue-800 text-xs">
+            <AlertTriangle className="w-3 h-3" />
+            Calc
+          </Badge>
+        );
+      case DataSource.ESTIMATED:
+        return (
+          <Badge variant="secondary" className="flex items-center gap-1 bg-orange-100 text-orange-800 text-xs">
+            <AlertTriangle className="w-3 h-3" />
+            Est
+          </Badge>
+        );
+      default:
+        return (
+          <Badge variant="secondary" className="flex items-center gap-1 bg-gray-100 text-gray-800 text-xs">
+            <XCircle className="w-3 h-3" />
+            Mock
+          </Badge>
+        );
+    }
+  };
+
+  const formatValue = (metric: MetricWithSource, key: string): string => {
+    if (metric.isNA) {
+      return 'N/A';
+    }
+
+    const value = metric.value;
+    
+    // Format percentage values
+    if (key.includes('Margin') || key.includes('ROE') || key.includes('ROA') || key.includes('ROCE') || key.includes('Growth') || key.includes('Yield')) {
+      return `${value.toFixed(1)}%`;
+    }
+    
+    // Format ratio values
+    if (key.includes('Ratio') || key.includes('Coverage')) {
+      return value.toFixed(2);
+    }
+    
+    // Default formatting
+    return value.toFixed(1);
+  };
   // Format currency values
   const formatCurrency = (value: number): string => {
     if (value > 10000000000) {
@@ -45,171 +109,50 @@ const RealMetricsGrid: React.FC<RealMetricsGridProps> = ({
     return value.toFixed(2);
   };
 
-  // Convert metrics to display format
-  const displayMetrics: RealMetric[] = [];
-
-  // Add metrics based on availability
-  if (metrics.currentPrice) {
-    displayMetrics.push({
-      key: "currentPrice",
-      label: "Current Price (தற்போதைய விலை)",
-      value: formatCurrency(metrics.currentPrice),
-      bgColor: "bg-green-50",
-      textColor: "text-green-600",
-      borderColor: "border-green-100",
-    });
-  }
-
-  if (metrics.marketCap) {
-    displayMetrics.push({
-      key: "marketCap",
-      label: "Market Cap (சந்தை மதிப்பு)",
-      value: formatCurrency(metrics.marketCap),
-      bgColor: "bg-blue-50",
-      textColor: "text-blue-600",
-      borderColor: "border-blue-100",
-    });
-  }
-
-  if (metrics.peRatio) {
-    displayMetrics.push({
-      key: "peRatio",
-      label: "P/E Ratio (விலை vs வருமானம்)",
-      value: formatRatio(metrics.peRatio),
-      bgColor: "bg-purple-50",
-      textColor: "text-purple-600",
-      borderColor: "border-purple-100",
-    });
-  }
-
-  if (metrics.pbRatio) {
-    displayMetrics.push({
-      key: "pbRatio",
-      label: "P/B Ratio (விலை vs புத்தக மதிப்பு)",
-      value: formatRatio(metrics.pbRatio),
-      bgColor: "bg-indigo-50",
-      textColor: "text-indigo-600",
-      borderColor: "border-indigo-100",
-    });
-  }
-
-  if (metrics.dividendYield) {
-    displayMetrics.push({
-      key: "dividendYield",
-      label: "Dividend Yield (வருடாந்தர வருமானம்)",
-      value: formatPercent(metrics.dividendYield),
-      bgColor: "bg-yellow-50",
-      textColor: "text-yellow-600",
-      borderColor: "border-yellow-100",
-    });
-  }
-
-  if (metrics.returnOnEquity) {
-    displayMetrics.push({
-      key: "returnOnEquity",
-      label: "ROE (பங்குதாரர் வருமானம்)",
-      value: formatPercent(metrics.returnOnEquity),
-      bgColor: "bg-emerald-50",
-      textColor: "text-emerald-600",
-      borderColor: "border-emerald-100",
-    });
-  }
-
-  if (metrics.returnOnAssets) {
-    displayMetrics.push({
-      key: "returnOnAssets",
-      label: "ROA (சொத்து வருமானம்)",
-      value: formatPercent(metrics.returnOnAssets),
-      bgColor: "bg-emerald-50",
-      textColor: "text-emerald-600",
-      borderColor: "border-emerald-100",
-    });
-  }
-
-  if (metrics.profitMargins) {
-    displayMetrics.push({
-      key: "profitMargins",
-      label: "Net Profit Margin (நிகர லாப வீதம்)",
-      value: formatPercent(metrics.profitMargins),
-      bgColor: "bg-teal-50",
-      textColor: "text-teal-600",
-      borderColor: "border-teal-100",
-    });
-  }
-
-  if (metrics.fiftyTwoWeekHigh && metrics.fiftyTwoWeekLow) {
-    displayMetrics.push({
-      key: "priceRange",
-      label: "52W High/Low (52 வார உயர்ந்த/குறைந்த)",
-      value: `${formatCurrency(metrics.fiftyTwoWeekHigh)} / ${formatCurrency(metrics.fiftyTwoWeekLow)}`,
-      bgColor: "bg-gray-50",
-      textColor: "text-gray-600",
-      borderColor: "border-gray-100",
-    });
-  }
-
-  if (metrics.bookValuePerShare) {
-    displayMetrics.push({
-      key: "bookValuePerShare",
-      label: "Book Value (புத்தக மதிப்பு)",
-      value: formatCurrency(metrics.bookValuePerShare),
-      bgColor: "bg-indigo-50",
-      textColor: "text-indigo-600",
-      borderColor: "border-indigo-100",
-    });
-  }
-
-  if (metrics.currentRatio) {
-    displayMetrics.push({
-      key: "currentRatio",
-      label: "Current Ratio (தற்போதைய விகிதம்)",
-      value: formatRatio(metrics.currentRatio),
-      bgColor: "bg-cyan-50",
-      textColor: "text-cyan-600",
-      borderColor: "border-cyan-100",
-    });
-  }
-
-  if (metrics.volume) {
-    displayMetrics.push({
-      key: "volume",
-      label: "Volume (வொல்யூம்)",
-      value: metrics.volume.toLocaleString("en-IN"),
-      bgColor: "bg-orange-50",
-      textColor: "text-orange-600",
-      borderColor: "border-orange-100",
-    });
-  }
-
-  // If no real metrics available, show message
-  if (displayMetrics.length === 0) {
+  // If no metrics available, show message
+  if (Object.keys(metrics).length === 0) {
     return (
-      <div className="text-center py-8">
-        <p className="text-gray-500">No real API data available</p>
-        <p className="text-sm text-gray-400 mt-2">Please try refreshing or check API connectivity</p>
+      <div className="text-center py-8 text-gray-500">
+        <XCircle className="w-12 h-12 mx-auto mb-2 opacity-50" />
+        <p>No {title?.toLowerCase() || 'financial'} metrics available</p>
+        <p className="text-sm">Data not provided by Yahoo Finance API</p>
       </div>
     );
   }
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-      {displayMetrics.map((metric) => (
-        <div
-          key={metric.key}
-          className={`p-3 ${metric.bgColor} rounded-lg border ${metric.borderColor} cursor-pointer hover:shadow-md transition-all duration-200 relative`}
-          onClick={() => onMetricClick && onMetricClick(metric.key, metric.value)}
-        >
-          <div className="flex items-center justify-between mb-1">
-            <p className={`text-xs ${metric.textColor} font-medium`}>
-              {metric.label}
-            </p>
-            <DataSourceBadge dataSource={dataSource} size="sm" />
+    <div className="space-y-4">
+      {title && <h3 className="font-semibold text-lg text-gray-900">{title}</h3>}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {Object.entries(metrics).map(([key, metric]) => (
+          <div 
+            key={key} 
+            className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm cursor-pointer hover:shadow-md transition-all duration-200"
+            onClick={() => onMetricClick && onMetricClick(key, formatValue(metric, key))}
+          >
+            <div className="flex justify-between items-start mb-2">
+              <h4 className="text-sm font-medium text-gray-700">{key}</h4>
+              {getDataSourceBadge(metric)}
+            </div>
+            
+            <div className={`text-2xl font-bold ${metric.isNA ? 'text-red-600' : 'text-gray-900'} mb-1`}>
+              {formatValue(metric, key)}
+            </div>
+            
+            {!metric.isNA && (
+              <div className="text-xs text-gray-500">
+                Last updated: {metric.lastUpdated?.toLocaleDateString()}
+              </div>
+            )}
+            
+            {metric.isNA && (
+              <div className="text-xs text-red-600">
+                Not available from Yahoo Finance API
+              </div>
+            )}
           </div>
-          <p className={`text-sm font-bold ${metric.textColor.replace('600', '900')}`}>
-            {metric.value}
-          </p>
-        </div>
-      ))}
+        ))}
+      </div>
     </div>
   );
 };

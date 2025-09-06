@@ -136,156 +136,99 @@ const StockDetailPage: React.FC = () => {
     try {
       console.log(`🔍 Loading comprehensive analysis for ${symbol}...`);
 
-      // Load both comprehensive analysis and real metrics in parallel
-      const [analysis, realMetricsData] = await Promise.all([
-        getStockAnalysis(symbol),
-        getRealStockMetrics(symbol)
-      ]);
+      // Get enhanced data from Yahoo Finance API
+      const enhancedData = await hybridStockService.getEnhancedFinancialData(symbol);
+      const analysis = hybridStockService.createAnalysisFromData(symbol, enhancedData);
 
       setStockAnalysis(analysis);
 
-      if (realMetricsData) {
-        setRealMetrics(realMetricsData);
-        console.log(`✅ Real metrics loaded for ${symbol}:`, Object.keys(realMetricsData.metrics));
+      if (enhancedData.hasRealData) {
+        console.log(`✅ Real data loaded for ${symbol}`);
+        setRealMetrics(null); // We'll phase out the old realMetrics in favor of integrated data
       } else {
-        console.log(`⚠️ No real metrics available for ${symbol}`);
+        console.log(`⚠️ Limited data available for ${symbol} - showing N/A for missing metrics`);
         setRealMetrics(null);
       }
 
-      console.log(`✅ Successfully loaded analysis for ${symbol}:`, analysis);
+      console.log(`✅ Successfully loaded analysis for ${symbol}`, analysis);
     } catch (err) {
       console.error("Error loading stock analysis:", err);
       setError("Failed to load stock analysis. Please try again.");
 
-      // Load mock data as fallback
-      setStockAnalysis(createMockAnalysis(symbol));
+      // Create minimal fallback analysis
+      const fallbackAnalysis: DetailedStockAnalysis = {
+        symbol: symbol.toUpperCase(),
+        name: `${symbol.toUpperCase()} Limited`,
+        about: "Unable to fetch stock data from Yahoo Finance API. Please check the stock symbol and try again.",
+        keyPoints: [
+          "Data unavailable from Yahoo Finance API",
+          "Stock symbol may be incorrect or delisted", 
+          "Try using the correct stock exchange suffix (e.g., .NS for NSE)"
+        ],
+        currentPrice: 0,
+        marketCap: 0,
+        sector: "N/A",
+        industry: "N/A",
+        financialHealth: {
+          statements: {
+            incomeStatement: HealthStatus.NORMAL,
+            balanceSheet: HealthStatus.NORMAL,
+            cashFlow: HealthStatus.NORMAL,
+          },
+          profitability: {},
+          liquidity: {},
+          valuation: {},
+          growth: {},
+          management: HealthStatus.NORMAL,
+          industry: HealthStatus.NORMAL,
+          risks: HealthStatus.NORMAL,
+          outlook: HealthStatus.NORMAL,
+        },
+        technicalIndicators: {
+          stochasticRSI: {
+            indicator: "Stochastic RSI",
+            value: 0,
+            signal: SignalType.HOLD,
+            health: HealthStatus.NORMAL,
+            description: "N/A - Data not available",
+          },
+          connorsRSI: {
+            indicator: "Connors RSI", 
+            value: 0,
+            signal: SignalType.HOLD,
+            health: HealthStatus.NORMAL,
+            description: "N/A - Data not available",
+          },
+          macd: {
+            indicator: "MACD",
+            value: 0,
+            signal: SignalType.HOLD,
+            health: HealthStatus.NORMAL,
+            description: "N/A - Data not available",
+          },
+          patterns: {
+            indicator: "Pattern Analysis",
+            value: 0,
+            signal: SignalType.HOLD,
+            health: HealthStatus.NORMAL,
+            description: "N/A - Data not available",
+          },
+          support: [],
+          resistance: [],
+        },
+        pros: ["Stock symbol recognized", "Analysis structure available"],
+        cons: ["No real data available", "Unable to connect to data source"],
+        priceHistory: [],
+        lastUpdated: new Date(),
+      };
+      setStockAnalysis(fallbackAnalysis);
       setRealMetrics(null);
     } finally {
       setLoading(false);
     }
   };
 
-  // Create mock data for development
-  const createMockAnalysis = (symbol: string): DetailedStockAnalysis => {
-    return {
-      symbol: symbol.toUpperCase(),
-      name: `${symbol.toUpperCase()} Limited`,
-      about: `${symbol.toUpperCase()} is a leading technology company specializing in innovative solutions for the digital economy. With a strong market presence and robust fundamentals, the company has consistently delivered value to shareholders through strategic investments and operational excellence.`,
-      keyPoints: [
-        "Strong revenue growth of 25% YoY",
-        "Debt-to-equity ratio maintained at healthy 0.3",
-        "Expanding market share in core segments",
-        "Recent strategic partnerships in emerging markets",
-        "Robust cash flow generation capabilities",
-      ],
-      currentPrice: 1245.6,
-      marketCap: 85000000000,
-      sector: "Technology",
-      industry: "Software Services",
-      financialHealth: {
-        statements: {
-          incomeStatement: HealthStatus.GOOD,
-          balanceSheet: HealthStatus.BEST,
-          cashFlow: HealthStatus.GOOD,
-        },
-        profitability: {
-          ROE: { value: 18.5, health: HealthStatus.GOOD },
-          ROA: { value: 12.3, health: HealthStatus.GOOD },
-          ROCE: { value: 22.1, health: HealthStatus.BEST },
-          "Gross Margin": { value: 42.5, health: HealthStatus.GOOD },
-          "Operating Margin": { value: 18.2, health: HealthStatus.GOOD },
-          "Net Margin": { value: 15.8, health: HealthStatus.GOOD },
-        },
-        liquidity: {
-          "Current Ratio": { value: 2.1, health: HealthStatus.GOOD },
-          "Quick Ratio": { value: 1.8, health: HealthStatus.GOOD },
-          "Debt-to-Equity": { value: 0.3, health: HealthStatus.BEST },
-          "Interest Coverage": { value: 8.5, health: HealthStatus.BEST },
-        },
-        valuation: {
-          "P/E Ratio": { value: 24.5, health: HealthStatus.NORMAL },
-          "P/B Ratio": { value: 3.2, health: HealthStatus.NORMAL },
-          "P/S Ratio": { value: 5.8, health: HealthStatus.NORMAL },
-          "EV/EBITDA": { value: 18.2, health: HealthStatus.NORMAL },
-          "Dividend Yield": { value: 1.2, health: HealthStatus.NORMAL },
-        },
-        growth: {
-          "Revenue CAGR (3Y)": { value: 22.8, health: HealthStatus.BEST },
-          "EPS Growth (3Y)": { value: 28.5, health: HealthStatus.BEST },
-          "Market Share Growth": { value: 15.2, health: HealthStatus.GOOD },
-        },
-        management: HealthStatus.GOOD,
-        industry: HealthStatus.GOOD,
-        risks: HealthStatus.NORMAL,
-        outlook: HealthStatus.GOOD,
-      },
-      technicalIndicators: {
-        stochasticRSI: {
-          indicator: "Stochastic RSI",
-          value: 72.5,
-          signal: SignalType.BUY,
-          health: HealthStatus.GOOD,
-          description:
-            "StochRSI shows momentum building with potential for mean reversion",
-          buyPrice: 1240,
-          targetPrice: 1380,
-          stopLoss: 1180,
-        },
-        connorsRSI: {
-          indicator: "Connors RSI",
-          value: 68.2,
-          signal: SignalType.BUY,
-          health: HealthStatus.GOOD,
-          description:
-            "RSI(2) indicates oversold conditions with reversal potential",
-          buyPrice: 1245,
-          targetPrice: 1350,
-          stopLoss: 1200,
-        },
-        macd: {
-          indicator: "MACD",
-          value: 2.85,
-          signal: SignalType.BUY,
-          health: HealthStatus.GOOD,
-          description:
-            "MACD bullish crossover with mean-reversion filter active",
-          buyPrice: 1250,
-          targetPrice: 1400,
-          stopLoss: 1190,
-        },
-        patterns: {
-          indicator: "Pattern Analysis",
-          value: 0.75,
-          signal: SignalType.BUY,
-          health: HealthStatus.GOOD,
-          description: "3 down closes above 200-DMA, exit signal at 5-DMA",
-          buyPrice: 1248,
-          targetPrice: 1420,
-          stopLoss: 1185,
-        },
-        support: [1180, 1150, 1120],
-        resistance: [1280, 1320, 1380],
-      },
-      pros: [
-        "Strong fundamentals with consistent revenue growth",
-        "Healthy balance sheet with low debt levels",
-        "Market leader with competitive moats",
-        "Experienced management team with proven track record",
-        "Growing market opportunity in digital transformation",
-        "Strong cash generation and profitable operations",
-      ],
-      cons: [
-        "High valuation compared to historical averages",
-        "Dependence on key technology partnerships",
-        "Intense competition from global players",
-        "Regulatory risks in emerging markets",
-        "Currency exposure to international operations",
-        "Talent acquisition challenges in key segments",
-      ],
-      priceHistory: [], // Will be populated by chart component
-      lastUpdated: new Date(),
-    };
-  };
+  // Mock analysis function removed - now using real Yahoo Finance API data only
 
   useEffect(() => {
     loadStockAnalysis();
