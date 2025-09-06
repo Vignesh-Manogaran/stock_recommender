@@ -271,17 +271,22 @@ export class HybridStockService {
   private async getLocalAnalysis(
     symbol: string
   ): Promise<DetailedStockAnalysis> {
-    // Try enhanced financial data first
-    try {
-      console.log(`🔍 Attempting enhanced financial data fetch for ${symbol}...`);
-      const enhancedData = await this.getEnhancedFinancialData(symbol);
-      
-      if (enhancedData.hasRealData) {
-        console.log(`✅ Enhanced data available for ${symbol}!`);
-        return this.createEnhancedAnalysis(symbol, enhancedData);
+    // Check if RapidAPI is available before trying
+    if (!rapidApiYahooService.isAvailable()) {
+      console.log(`🔑 RapidAPI key not configured. Skipping enhanced data fetch for ${symbol}`);
+    } else {
+      // Try enhanced financial data first
+      try {
+        console.log(`🔍 Attempting enhanced financial data fetch for ${symbol}...`);
+        const enhancedData = await this.getEnhancedFinancialData(symbol);
+        
+        if (enhancedData.hasRealData) {
+          console.log(`✅ Enhanced data available for ${symbol}!`);
+          return this.createEnhancedAnalysis(symbol, enhancedData);
+        }
+      } catch (error) {
+        console.log(`⚠️ Enhanced data fetch failed: ${error.message}`);
       }
-    } catch (error) {
-      console.log(`⚠️ Enhanced data fetch failed: ${error.message}`);
     }
 
     // Direct to fallback system for reliable development experience

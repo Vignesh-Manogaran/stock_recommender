@@ -28,7 +28,9 @@ import FundamentalAnalysisTab from "@/components/tabs/FundamentalAnalysisTab";
 import TechnicalAnalysisTab from "@/components/tabs/TechnicalAnalysisTab";
 import DataSourceBadge from "@/components/ui/DataSourceBadge";
 import RealMetricsGrid from "@/components/ui/RealMetricsGrid";
+import ApiKeyNotice from "@/components/ui/ApiKeyNotice";
 import { getStockAnalysis, getRealStockMetrics } from "@/services/hybridStockService";
+import { rapidApiYahooService } from "@/services/rapidApiYahooService";
 import { DataSource } from "@/types";
 
 const StockDetailPage: React.FC = () => {
@@ -246,6 +248,36 @@ const StockDetailPage: React.FC = () => {
   }
 
   if (error || !stockAnalysis) {
+    // Check if this is an API key issue
+    const isApiKeyIssue = !rapidApiYahooService.isAvailable();
+    
+    if (isApiKeyIssue) {
+      return (
+        <div className="min-h-screen bg-gray-50 p-6">
+          <div className="max-w-4xl mx-auto">
+            <div className="mb-6">
+              <Button
+                variant="outline"
+                onClick={() => navigate("/stocks")}
+                className="flex items-center space-x-2 mb-4"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                <span>Back to Stocks</span>
+              </Button>
+              <h1 className="text-2xl font-bold text-gray-900">
+                {symbol?.toUpperCase()} Stock Analysis
+              </h1>
+            </div>
+            
+            <ApiKeyNotice 
+              title="Real-Time Data Requires API Key"
+              description="To display live stock data and comprehensive financial metrics, you'll need a free RapidAPI key for Yahoo Finance API"
+            />
+          </div>
+        </div>
+      );
+    }
+    
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <Card className="max-w-md mx-auto">

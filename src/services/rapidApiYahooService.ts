@@ -122,9 +122,12 @@ class RapidApiYahooService {
       import.meta.env.VITE_RAPIDAPI_KEY ||
       "";
 
-    if (!this.apiKey) {
+    if (!this.apiKey || this.apiKey === "PLEASE_ADD_YOUR_RAPIDAPI_KEY_HERE") {
       console.warn(
-        "⚠️ RapidAPI key not found. Set RAPIDAPI_KEY environment variable."
+        "⚠️ RapidAPI key not configured. Please add your API key to .env file as VITE_RAPIDAPI_KEY"
+      );
+      console.warn(
+        "🔑 Get your free API key from: https://rapidapi.com/alphavantage-rapidapi/api/yahoo-finance-real-time/"
       );
     }
   }
@@ -536,7 +539,7 @@ class RapidApiYahooService {
    * Check if RapidAPI service is available
    */
   isAvailable(): boolean {
-    return !!this.apiKey;
+    return !!this.apiKey && this.apiKey !== "PLEASE_ADD_YOUR_RAPIDAPI_KEY_HERE";
   }
 
   /**
