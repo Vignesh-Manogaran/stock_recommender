@@ -74,6 +74,41 @@ export interface RapidApiYahooCashFlow {
   dividendsPaid?: number;
 }
 
+export interface RapidApiYahooChart {
+  chart?: {
+    result?: Array<{
+      meta?: {
+        currency?: string;
+        symbol?: string;
+        regularMarketPrice?: number;
+        chartPreviousClose?: number;
+        fiftyTwoWeekHigh?: number;
+        fiftyTwoWeekLow?: number;
+        regularMarketDayHigh?: number;
+        regularMarketDayLow?: number;
+        regularMarketVolume?: number;
+        longName?: string;
+        shortName?: string;
+        validRanges?: string[];
+      };
+      timestamp?: number[];
+      indicators?: {
+        quote?: Array<{
+          high?: number[];
+          open?: number[];
+          low?: number[];
+          volume?: number[];
+          close?: number[];
+        }>;
+        adjclose?: Array<{
+          adjclose?: number[];
+        }>;
+      };
+    }>;
+    error?: any;
+  };
+}
+
 class RapidApiYahooService {
   private readonly baseUrl =
     "https://yahoo-finance-real-time-api.p.rapidapi.com";
@@ -369,6 +404,51 @@ class RapidApiYahooService {
     } catch (error) {
       console.error(
         `❌ RapidAPI Yahoo cash flow failed for ${symbol}:`,
+        error
+      );
+      return null;
+    }
+  }
+
+  /**
+   * Get chart/historical price data
+   */
+  async getChart(
+    symbol: string, 
+    range: string = "1mo",
+    interval: string = "1d"
+  ): Promise<RapidApiYahooChart | null> {
+    try {
+      const yahooSymbol = this.formatSymbolForYahoo(symbol);
+      console.log(
+        `📡 RapidAPI Yahoo: Getting chart data for ${symbol} -> ${yahooSymbol} (${range}, ${interval})`
+      );
+
+      // Use the Vercel API endpoint for better reliability
+      const apiUrl = `/api/rapidapi-yahoo?symbol=${encodeURIComponent(symbol)}&endpoint=historical&range=${range}&interval=${interval}`;
+      
+      const response = await fetch(apiUrl, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(
+          `Chart API returned ${response.status}: ${response.statusText}`
+        );
+      }
+
+      const data = await response.json();
+      console.log(
+        `✅ RapidAPI Yahoo: Chart data received for ${yahooSymbol}`
+      );
+
+      return data;
+    } catch (error) {
+      console.error(
+        `❌ RapidAPI Yahoo chart failed for ${symbol}:`,
         error
       );
       return null;

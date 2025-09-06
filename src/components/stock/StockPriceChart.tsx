@@ -10,8 +10,10 @@ import {
   ReferenceLine,
 } from "recharts";
 import { motion } from "framer-motion";
-import { PriceData } from "@/types";
+import { PriceData, DataSource } from "@/types";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
+import DataSourceBadge from "@/components/ui/DataSourceBadge";
+import { getStockChartData } from "@/services/hybridStockService";
 
 interface StockPriceChartProps {
   symbol: string;
@@ -30,11 +32,13 @@ const StockPriceChart: React.FC<StockPriceChartProps> = ({
   className = "",
 }) => {
   const [chartData, setChartData] = useState<ChartDataPoint[]>([]);
-  const [timeRange, setTimeRange] = useState<"1M" | "3M" | "6M" | "1Y" | "2Y">(
-    "3M"
+  const [timeRange, setTimeRange] = useState<"1mo" | "3mo" | "6mo" | "1y" | "2y">(
+    "3mo"
   );
   const [loading, setLoading] = useState(true);
   const [currentPrice, setCurrentPrice] = useState<number | null>(null);
+  const [dataSource, setDataSource] = useState<DataSource>(DataSource.MOCK);
+  const [isRealData, setIsRealData] = useState(false);
 
   // Generate mock price data for demonstration
   const generateMockData = (days: number): ChartDataPoint[] => {
@@ -70,21 +74,17 @@ const StockPriceChart: React.FC<StockPriceChartProps> = ({
     return data;
   };
 
-  const getDaysForTimeRange = (range: string): number => {
-    switch (range) {
-      case "1M":
-        return 30;
-      case "3M":
-        return 90;
-      case "6M":
-        return 180;
-      case "1Y":
-        return 365;
-      case "2Y":
-        return 730;
-      default:
-        return 90;
-    }
+  // Convert PriceData to ChartDataPoint for the chart component
+  const convertPriceDataToChartData = (priceData: PriceData[]): ChartDataPoint[] => {
+    return priceData.map((item) => ({
+      date: item.date.toLocaleDateString("en-IN", {
+        month: "short",
+        day: "numeric",
+      }),
+      price: item.close,
+      volume: item.volume,
+      timestamp: item.date.getTime(),
+    }));
   };
 
   const loadChartData = async () => {
@@ -99,35 +99,57 @@ const StockPriceChart: React.FC<StockPriceChartProps> = ({
         const parsed = JSON.parse(cachedData);
         // Check if data is less than 5 minutes old
         if (new Date().getTime() - parsed.timestamp < 300000) {
-          setChartData(parsed.data);
-          setCurrentPrice(parsed.data[parsed.data.length - 1]?.price || null);
+          setChartData(parsed.chartData);
+          setCurrentPrice(parsed.chartData[parsed.chartData.length - 1]?.price || null);
+          setDataSource(parsed.dataSource || DataSource.MOCK);
+          setIsRealData(parsed.isRealData || false);
           setLoading(false);
           return;
         }
       }
 
-      // For now, use mock data since we don't have a real API endpoint
-      const days = getDaysForTimeRange(timeRange);
-      const mockData = generateMockData(days);
+      // Fetch real chart data
+      console.log(`📈 Loading chart data for ${symbol} (${timeRange})`);
+      const { data, isRealData: realData, dataSource: source } = await getStockChartData(
+        symbol,
+        timeRange,
+        timeRange === "1mo" || timeRange === "3mo" ? "1d" : "1wk"
+      );
+
+      // Convert to chart format
+      const chartData = convertPriceDataToChartData(data);
 
       // Cache the data
       localStorage.setItem(
         cacheKey,
         JSON.stringify({
-          data: mockData,
+          chartData,
+          dataSource: source,
+          isRealData: realData,
           timestamp: new Date().getTime(),
         })
       );
 
-      setChartData(mockData);
-      setCurrentPrice(mockData[mockData.length - 1]?.price || null);
+      setChartData(chartData);
+      setCurrentPrice(chartData[chartData.length - 1]?.price || null);
+      setDataSource(source);
+      setIsRealData(realData);
+
+      console.log(
+        `✅ Chart data loaded: ${chartData.length} points (Real: ${realData})`
+      );
     } catch (error) {
       console.error("Error loading chart data:", error);
+      
       // Fallback to mock data
-      const days = getDaysForTimeRange(timeRange);
+      const days = timeRange === "1mo" ? 30 : timeRange === "3mo" ? 90 : 
+                   timeRange === "6mo" ? 180 : timeRange === "1y" ? 365 : 730;
       const mockData = generateMockData(days);
+      
       setChartData(mockData);
       setCurrentPrice(mockData[mockData.length - 1]?.price || null);
+      setDataSource(DataSource.MOCK);
+      setIsRealData(false);
     } finally {
       setLoading(false);
     }
@@ -181,9 +203,15 @@ const StockPriceChart: React.FC<StockPriceChartProps> = ({
       {/* Chart Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h3 className="text-lg font-semibold text-gray-900">
-            {symbol} Price Chart
-          </h3>
+          <div className="flex items-center space-x-3">
+            <h3 className="text-lg font-semibold text-gray-900">
+              {symbol} Price Chart
+            </h3>
+            <DataSourceBadge dataSource={dataSource} showLabel />
+            {!isRealData && (
+              <div className="w-2 h-2 bg-red-500 rounded-full" title="Mock/Estimated Data" />
+            )}
+          </div>
           {currentPrice && (
             <div className="flex items-center space-x-3 mt-1">
               <span className="text-2xl font-bold text-gray-900">
@@ -199,13 +227,16 @@ const StockPriceChart: React.FC<StockPriceChartProps> = ({
                 {priceChange >= 0 ? "+" : ""}
                 {priceChange.toFixed(2)}%
               </span>
+              <span className="text-xs text-gray-500">
+                {isRealData ? "Real-time" : "Estimated"}
+              </span>
             </div>
           )}
         </div>
 
         {/* Time Range Selector */}
         <div className="flex bg-gray-100 rounded-lg p-1">
-          {(["1M", "3M", "6M", "1Y", "2Y"] as const).map((range) => (
+          {(["1mo", "3mo", "6mo", "1y", "2y"] as const).map((range) => (
             <button
               key={range}
               onClick={() => setTimeRange(range)}
@@ -215,7 +246,7 @@ const StockPriceChart: React.FC<StockPriceChartProps> = ({
                   : "text-gray-600 hover:text-gray-900"
               }`}
             >
-              {range}
+              {range.toUpperCase()}
             </button>
           ))}
         </div>

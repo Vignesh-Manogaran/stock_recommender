@@ -17,7 +17,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { symbol, endpoint = "stock", period = "1y" } = req.query;
+    const { symbol, endpoint = "stock", period = "1y", range = "1mo", interval = "1d" } = req.query;
 
     if (!symbol) {
       return res.status(400).json({
@@ -65,7 +65,7 @@ export default async function handler(req, res) {
           balancesheet: `/stock/get-balance-sheet?symbol=${yahooSymbol}&lang=en-IN&region=IN`,
           cashflow: `/stock/get-cashflow?symbol=${yahooSymbol}&lang=en-IN&region=IN`,
           analysis: `/stock/get-analysis?symbol=${yahooSymbol}&lang=en-IN&region=IN`,
-          historical: `/stock/get-chart?symbol=${yahooSymbol}&period=${period}&lang=en-IN&region=IN`,
+          historical: `/stock/get-chart?symbol=${yahooSymbol}&range=${range}&interval=${interval}&lang=en-IN&region=IN&useYfid=true&includeAdjustedClose=true&events=div%2Csplit%2Cearn&includePrePost=false`,
         },
       },
       {
