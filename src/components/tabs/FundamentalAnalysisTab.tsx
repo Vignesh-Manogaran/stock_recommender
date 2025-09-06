@@ -120,11 +120,11 @@ const FundamentalAnalysisTab: React.FC<FundamentalAnalysisTabProps> = ({
                         formatPercent(
                           stockAnalysis.financialHealth.growth[
                             "Revenue CAGR (3Y)"
-                          ].value
+                          ]?.value || 0
                         ),
                         stockAnalysis.financialHealth.growth[
                           "Revenue CAGR (3Y)"
-                        ].health
+                        ]?.health || HealthStatus.NORMAL
                       )
                     }
                   >
@@ -133,7 +133,7 @@ const FundamentalAnalysisTab: React.FC<FundamentalAnalysisTabProps> = ({
                       {formatPercent(
                         stockAnalysis.financialHealth.growth[
                           "Revenue CAGR (3Y)"
-                        ].value
+                        ]?.value || 0
                       )}
                     </span>
                   </div>
@@ -145,11 +145,11 @@ const FundamentalAnalysisTab: React.FC<FundamentalAnalysisTabProps> = ({
                         formatPercent(
                           stockAnalysis.financialHealth.profitability[
                             "Net Margin"
-                          ].value
+                          ]?.value || 0
                         ),
                         stockAnalysis.financialHealth.profitability[
                           "Net Margin"
-                        ].health
+                        ]?.health || HealthStatus.NORMAL
                       )
                     }
                   >
@@ -158,7 +158,7 @@ const FundamentalAnalysisTab: React.FC<FundamentalAnalysisTabProps> = ({
                       {formatPercent(
                         stockAnalysis.financialHealth.profitability[
                           "Net Margin"
-                        ].value
+                        ]?.value || 0
                       )}
                     </span>
                   </div>
@@ -170,11 +170,11 @@ const FundamentalAnalysisTab: React.FC<FundamentalAnalysisTabProps> = ({
                         formatPercent(
                           stockAnalysis.financialHealth.profitability[
                             "Operating Margin"
-                          ].value
+                          ]?.value || 0
                         ),
                         stockAnalysis.financialHealth.profitability[
                           "Operating Margin"
-                        ].health
+                        ]?.health || HealthStatus.NORMAL
                       )
                     }
                   >
@@ -183,7 +183,7 @@ const FundamentalAnalysisTab: React.FC<FundamentalAnalysisTabProps> = ({
                       {formatPercent(
                         stockAnalysis.financialHealth.profitability[
                           "Operating Margin"
-                        ].value
+                        ]?.value || 0
                       )}
                     </span>
                   </div>
@@ -211,7 +211,7 @@ const FundamentalAnalysisTab: React.FC<FundamentalAnalysisTabProps> = ({
                     <span className="font-medium text-gray-900">
                       {stockAnalysis.financialHealth.liquidity[
                         "Debt-to-Equity"
-                      ].value.toFixed(1)}
+                      ]?.value?.toFixed(1) || "N/A"}
                     </span>
                   </div>
                   <div className="flex justify-between">
@@ -219,7 +219,7 @@ const FundamentalAnalysisTab: React.FC<FundamentalAnalysisTabProps> = ({
                     <span className="font-medium text-gray-900">
                       {stockAnalysis.financialHealth.liquidity[
                         "Current Ratio"
-                      ].value.toFixed(1)}
+                      ]?.value?.toFixed(1) || "N/A"}
                     </span>
                   </div>
                   <div className="flex justify-between">
@@ -289,9 +289,9 @@ const FundamentalAnalysisTab: React.FC<FundamentalAnalysisTabProps> = ({
                           key === "ROE" ||
                           key === "ROA" ||
                           key === "ROCE"
-                          ? formatPercent(metric.value)
-                          : metric.value.toFixed(1),
-                        metric.health
+                          ? formatPercent(metric?.value || 0)
+                          : (metric?.value || 0).toFixed(1),
+                        metric?.health || HealthStatus.NORMAL
                       )
                     }
                   >
@@ -299,7 +299,7 @@ const FundamentalAnalysisTab: React.FC<FundamentalAnalysisTabProps> = ({
                       <h4 className="text-sm font-medium text-gray-900">
                         {key}
                       </h4>
-                      {getHealthIcon(metric.health)}
+                      {getHealthIcon(metric?.health || HealthStatus.NORMAL)}
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-2xl font-bold text-gray-900">
@@ -307,15 +307,15 @@ const FundamentalAnalysisTab: React.FC<FundamentalAnalysisTabProps> = ({
                         key === "ROE" ||
                         key === "ROA" ||
                         key === "ROCE"
-                          ? formatPercent(metric.value)
-                          : metric.value.toFixed(1)}
+                          ? formatPercent(metric?.value || 0)
+                          : (metric?.value || 0).toFixed(1)}
                       </span>
                       <span
                         className={`text-xs px-2 py-1 rounded-full font-medium ${getHealthColor(
-                          metric.health
+                          metric?.health || HealthStatus.NORMAL
                         )}`}
                       >
-                        {metric.health}
+                        {metric?.health || HealthStatus.NORMAL}
                       </span>
                     </div>
                   </div>
@@ -347,10 +347,10 @@ const FundamentalAnalysisTab: React.FC<FundamentalAnalysisTabProps> = ({
                     onClick={() =>
                       handleMetricClick(
                         key,
-                        `${metric.value.toFixed(1)}${
+                        `${(metric?.value || 0).toFixed(1)}${
                           key === "Interest Coverage" ? "x" : ""
                         }`,
-                        metric.health
+                        metric?.health || HealthStatus.NORMAL
                       )
                     }
                   >
@@ -358,19 +358,19 @@ const FundamentalAnalysisTab: React.FC<FundamentalAnalysisTabProps> = ({
                       <h4 className="text-sm font-medium text-gray-900">
                         {key}
                       </h4>
-                      {getHealthIcon(metric.health)}
+                      {getHealthIcon(metric?.health || HealthStatus.NORMAL)}
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-xl font-bold text-blue-600">
-                        {metric.value.toFixed(1)}
+                        {(metric?.value || 0).toFixed(1)}
                         {key === "Interest Coverage" ? "x" : ""}
                       </span>
                       <span
                         className={`text-xs px-2 py-1 rounded-full font-medium ${getHealthColor(
-                          metric.health
+                          metric?.health || HealthStatus.NORMAL
                         )}`}
                       >
-                        {metric.health}
+                        {metric?.health || HealthStatus.NORMAL}
                       </span>
                     </div>
                   </div>
@@ -403,9 +403,9 @@ const FundamentalAnalysisTab: React.FC<FundamentalAnalysisTabProps> = ({
                       handleMetricClick(
                         key,
                         key === "Dividend Yield"
-                          ? formatPercent(metric.value)
-                          : metric.value.toFixed(1),
-                        metric.health
+                          ? formatPercent(metric?.value || 0)
+                          : (metric?.value || 0).toFixed(1),
+                        metric?.health || HealthStatus.NORMAL
                       )
                     }
                   >
@@ -413,20 +413,20 @@ const FundamentalAnalysisTab: React.FC<FundamentalAnalysisTabProps> = ({
                       <h4 className="text-sm font-medium text-gray-900">
                         {key}
                       </h4>
-                      {getHealthIcon(metric.health)}
+                      {getHealthIcon(metric?.health || HealthStatus.NORMAL)}
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-xl font-bold text-purple-600">
                         {key === "Dividend Yield"
-                          ? formatPercent(metric.value)
-                          : metric.value.toFixed(1)}
+                          ? formatPercent(metric?.value || 0)
+                          : (metric?.value || 0).toFixed(1)}
                       </span>
                       <span
                         className={`text-xs px-2 py-1 rounded-full font-medium ${getHealthColor(
-                          metric.health
+                          metric?.health || HealthStatus.NORMAL
                         )}`}
                       >
-                        {metric.health}
+                        {metric?.health || HealthStatus.NORMAL}
                       </span>
                     </div>
                   </div>
@@ -462,8 +462,8 @@ const FundamentalAnalysisTab: React.FC<FundamentalAnalysisTabProps> = ({
                           : key.includes("EPS")
                           ? "EPS Growth"
                           : "Market Share Growth",
-                        formatPercent(metric.value),
-                        metric.health
+                        formatPercent(metric?.value || 0),
+                        metric?.health || HealthStatus.NORMAL
                       )
                     }
                   >
@@ -471,18 +471,18 @@ const FundamentalAnalysisTab: React.FC<FundamentalAnalysisTabProps> = ({
                       <h4 className="text-sm font-medium text-gray-900">
                         {key}
                       </h4>
-                      {getHealthIcon(metric.health)}
+                      {getHealthIcon(metric?.health || HealthStatus.NORMAL)}
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-2xl font-bold text-green-600">
-                        {formatPercent(metric.value)}
+                        {formatPercent(metric?.value || 0)}
                       </span>
                       <span
                         className={`text-xs px-2 py-1 rounded-full font-medium ${getHealthColor(
-                          metric.health
+                          metric?.health || HealthStatus.NORMAL
                         )}`}
                       >
-                        {metric.health}
+                        {metric?.health || HealthStatus.NORMAL}
                       </span>
                     </div>
                     <p className="text-xs text-gray-600 mt-1">
