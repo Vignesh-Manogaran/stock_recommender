@@ -29,7 +29,11 @@ import TechnicalAnalysisTab from "@/components/tabs/TechnicalAnalysisTab";
 import DataSourceBadge from "@/components/ui/DataSourceBadge";
 import RealMetricsGrid from "@/components/ui/RealMetricsGrid";
 import ApiKeyNotice from "@/components/ui/ApiKeyNotice";
-import { getStockAnalysis, getRealStockMetrics } from "@/services/hybridStockService";
+import {
+  getStockAnalysis,
+  getRealStockMetrics,
+  hybridStockService,
+} from "@/services/hybridStockService";
 import { rapidApiYahooService } from "@/services/rapidApiYahooService";
 import { DataSource } from "@/types";
 
@@ -138,18 +142,23 @@ const StockDetailPage: React.FC = () => {
     try {
       console.log(`🔍 Loading comprehensive analysis for ${symbol}...`);
 
-      // Get enhanced data from Yahoo Finance API
-      const enhancedData = await hybridStockService.getEnhancedFinancialData(symbol);
-      const analysis = hybridStockService.createAnalysisFromData(symbol, enhancedData);
-
+      // Get comprehensive analysis (uses both real data + AI analysis)
+      const analysis = await hybridStockService.getComprehensiveAnalysis(
+        symbol
+      );
       setStockAnalysis(analysis);
 
-      if (enhancedData.hasRealData) {
-        console.log(`✅ Real data loaded for ${symbol}`);
-        setRealMetrics(null); // We'll phase out the old realMetrics in favor of integrated data
+      // Try to get real metrics separately for the sidebar
+      const realMetrics = await getRealStockMetrics(symbol);
+      setRealMetrics(realMetrics);
+
+      if (realMetrics?.metrics) {
+        console.log(
+          `✅ Real metrics loaded for ${symbol}`,
+          Object.keys(realMetrics.metrics)
+        );
       } else {
-        console.log(`⚠️ Limited data available for ${symbol} - showing N/A for missing metrics`);
-        setRealMetrics(null);
+        console.log(`⚠️ No real metrics available for ${symbol}`);
       }
 
       console.log(`✅ Successfully loaded analysis for ${symbol}`, analysis);
@@ -161,11 +170,12 @@ const StockDetailPage: React.FC = () => {
       const fallbackAnalysis: DetailedStockAnalysis = {
         symbol: symbol.toUpperCase(),
         name: `${symbol.toUpperCase()} Limited`,
-        about: "Unable to fetch stock data from Yahoo Finance API. Please check the stock symbol and try again.",
+        about:
+          "Unable to fetch stock data from Yahoo Finance API. Please check the stock symbol and try again.",
         keyPoints: [
           "Data unavailable from Yahoo Finance API",
-          "Stock symbol may be incorrect or delisted", 
-          "Try using the correct stock exchange suffix (e.g., .NS for NSE)"
+          "Stock symbol may be incorrect or delisted",
+          "Try using the correct stock exchange suffix (e.g., .NS for NSE)",
         ],
         currentPrice: 0,
         marketCap: 0,
@@ -195,7 +205,7 @@ const StockDetailPage: React.FC = () => {
             description: "N/A - Data not available",
           },
           connorsRSI: {
-            indicator: "Connors RSI", 
+            indicator: "Connors RSI",
             value: 0,
             signal: SignalType.HOLD,
             health: HealthStatus.NORMAL,
@@ -250,7 +260,7 @@ const StockDetailPage: React.FC = () => {
   if (error || !stockAnalysis) {
     // Check if this is an API key issue
     const isApiKeyIssue = !rapidApiYahooService.isAvailable();
-    
+
     if (isApiKeyIssue) {
       return (
         <div className="min-h-screen bg-gray-50 p-6">
@@ -268,8 +278,8 @@ const StockDetailPage: React.FC = () => {
                 {symbol?.toUpperCase()} Stock Analysis
               </h1>
             </div>
-            
-            <ApiKeyNotice 
+
+            <ApiKeyNotice
               title="Real-Time Data Requires API Key"
               description="To display live stock data and comprehensive financial metrics, you'll need a free RapidAPI key for Yahoo Finance API"
             />
@@ -277,7 +287,7 @@ const StockDetailPage: React.FC = () => {
         </div>
       );
     }
-    
+
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <Card className="max-w-md mx-auto">
@@ -376,7 +386,9 @@ const StockDetailPage: React.FC = () => {
             <CardContent className="p-4">
               <div className="flex flex-wrap items-center justify-between">
                 <div className="flex items-center space-x-2 mb-2 md:mb-0">
-                  <h3 className="text-sm font-medium text-gray-900">Data Quality:</h3>
+                  <h3 className="text-sm font-medium text-gray-900">
+                    Data Quality:
+                  </h3>
                 </div>
                 <div className="flex flex-wrap items-center space-x-4 gap-y-2">
                   <div className="flex items-center space-x-2">
@@ -582,9 +594,13 @@ const StockDetailPage: React.FC = () => {
                         <div className="flex items-center space-x-2">
                           <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
                           <span className="text-sm font-medium text-green-700">
-                            All metrics below are real-time data from Yahoo Finance API
+                            All metrics below are real-time data from Yahoo
+                            Finance API
                           </span>
-                          <DataSourceBadge dataSource={DataSource.RAPID_API_YAHOO} showLabel />
+                          <DataSourceBadge
+                            dataSource={DataSource.RAPID_API_YAHOO}
+                            showLabel
+                          />
                         </div>
                       </div>
                       <RealMetricsGrid
@@ -602,7 +618,8 @@ const StockDetailPage: React.FC = () => {
                         No Real API Data Available
                       </h3>
                       <p className="text-gray-600 mb-4">
-                        Could not fetch real-time data from Yahoo Finance API for this symbol.
+                        Could not fetch real-time data from Yahoo Finance API
+                        for this symbol.
                       </p>
                       <div className="text-sm text-gray-500">
                         <p>• Check your internet connection</p>

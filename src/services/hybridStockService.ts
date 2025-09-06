@@ -5,8 +5,18 @@ import { yahooFinanceAPI, YahooStockData } from "./yahooFinanceAPI";
 import { openRouterAPI } from "./openRouterAPI";
 import { fallbackAPI, FallbackStockData } from "./fallbackAPI";
 import { VercelApiService } from "./vercelApiService";
-import { rapidApiYahooService, RapidApiYahooChart } from "./rapidApiYahooService";
-import { DetailedStockAnalysis, HealthStatus, SignalType, DataSource, MetricWithSource, PriceData } from "@/types";
+import {
+  rapidApiYahooService,
+  RapidApiYahooChart,
+} from "./rapidApiYahooService";
+import {
+  DetailedStockAnalysis,
+  HealthStatus,
+  SignalType,
+  DataSource,
+  MetricWithSource,
+  PriceData,
+} from "@/types";
 
 export class HybridStockService {
   // Check if we should use Vercel APIs (when deployed)
@@ -32,8 +42,16 @@ export class HybridStockService {
       rapidApiYahooService.getProfile(symbol),
     ]);
 
-    const [quote, statistics, financials, balanceSheet, cashFlow, summary, profile] = results.map(
-      (result) => (result.status === "fulfilled" ? result.value : null)
+    const [
+      quote,
+      statistics,
+      financials,
+      balanceSheet,
+      cashFlow,
+      summary,
+      profile,
+    ] = results.map((result) =>
+      result.status === "fulfilled" ? result.value : null
     );
 
     console.log(`📊 API Results for ${symbol}:`);
@@ -273,13 +291,17 @@ export class HybridStockService {
   ): Promise<DetailedStockAnalysis> {
     // Check if RapidAPI is available before trying
     if (!rapidApiYahooService.isAvailable()) {
-      console.log(`🔑 RapidAPI key not configured. Skipping enhanced data fetch for ${symbol}`);
+      console.log(
+        `🔑 RapidAPI key not configured. Skipping enhanced data fetch for ${symbol}`
+      );
     } else {
       // Try enhanced financial data first
       try {
-        console.log(`🔍 Attempting enhanced financial data fetch for ${symbol}...`);
+        console.log(
+          `🔍 Attempting enhanced financial data fetch for ${symbol}...`
+        );
         const enhancedData = await this.getEnhancedFinancialData(symbol);
-        
+
         if (enhancedData.hasRealData) {
           console.log(`✅ Enhanced data available for ${symbol}!`);
           return this.createEnhancedAnalysis(symbol, enhancedData);
@@ -327,7 +349,7 @@ export class HybridStockService {
       cashFlow: null,
       hasRealData: false,
     };
-    
+
     return this.createEnhancedAnalysis(symbol, mockEnhancedData);
   }
 
@@ -336,13 +358,21 @@ export class HybridStockService {
     symbol: string,
     range: string = "1mo",
     interval: string = "1d"
-  ): Promise<{ data: PriceData[]; isRealData: boolean; dataSource: DataSource }> {
+  ): Promise<{
+    data: PriceData[];
+    isRealData: boolean;
+    dataSource: DataSource;
+  }> {
     console.log(`📈 Fetching chart data for ${symbol} (${range}, ${interval})`);
 
     try {
       // Try to get real chart data from RapidAPI Yahoo
-      const chartResponse = await rapidApiYahooService.getChart(symbol, range, interval);
-      
+      const chartResponse = await rapidApiYahooService.getChart(
+        symbol,
+        range,
+        interval
+      );
+
       if (chartResponse?.chart?.result?.[0]) {
         const result = chartResponse.chart.result[0];
         const timestamps = result.timestamp || [];
@@ -372,7 +402,9 @@ export class HybridStockService {
           }
 
           if (priceData.length > 0) {
-            console.log(`✅ Real chart data retrieved: ${priceData.length} data points`);
+            console.log(
+              `✅ Real chart data retrieved: ${priceData.length} data points`
+            );
             return {
               data: priceData,
               isRealData: true,
@@ -821,28 +853,30 @@ export class HybridStockService {
     industry: string
   ): string[] {
     const points = [];
-    
+
     if (currentPrice) {
       points.push(`Current price: ₹${currentPrice.toFixed(2)} (Real-time)`);
     } else {
       points.push(`Current price: N/A - Not available from Yahoo Finance API`);
     }
-    
+
     if (marketCap) {
-      points.push(`Market cap: ₹${(marketCap / 10000000).toFixed(0)} Cr (Real-time)`);
+      points.push(
+        `Market cap: ₹${(marketCap / 10000000).toFixed(0)} Cr (Real-time)`
+      );
     } else {
       points.push(`Market cap: N/A - Not available from Yahoo Finance API`);
     }
-    
+
     if (peRatio) {
       points.push(`P/E Ratio: ${peRatio.toFixed(1)} (Real-time)`);
     } else {
       points.push(`P/E Ratio: N/A - Not available from Yahoo Finance API`);
     }
-    
+
     points.push(`Sector: ${sector !== "N/A" ? sector : "Not available"}`);
     points.push(`Industry: ${industry !== "N/A" ? industry : "Not available"}`);
-    
+
     return points;
   }
 
@@ -857,37 +891,40 @@ export class HybridStockService {
       return [
         "Stock symbol recognized in Yahoo Finance",
         "Basic trading information structure available",
-        "Potential for future data enhancement"
+        "Potential for future data enhancement",
       ];
     }
-    
+
     const pros = [];
     if (currentPrice) pros.push("Real-time price data available");
     if (marketCap) pros.push("Market capitalization data available");
     if (profileData) pros.push("Company profile information available");
-    
+
     pros.push("Data sourced from Yahoo Finance API");
     pros.push("Professional financial data provider");
-    
+
     return pros;
   }
 
   // Create cons based on available data
-  private createConsBasedOnData(hasRealData: boolean, symbol: string): string[] {
+  private createConsBasedOnData(
+    hasRealData: boolean,
+    symbol: string
+  ): string[] {
     if (!hasRealData) {
       return [
         "Limited data available from Yahoo Finance API",
         "Stock may be delisted or not actively traded",
         "Consider verifying stock symbol format",
-        "May require different data provider for this market"
+        "May require different data provider for this market",
       ];
     }
-    
+
     return [
       "Market data subject to real-time volatility",
       "API dependency for live updates",
       "Some advanced metrics may not be available",
-      "Data accuracy depends on exchange reporting"
+      "Data accuracy depends on exchange reporting",
     ];
   }
 
@@ -905,8 +942,16 @@ export class HybridStockService {
     symbol: string,
     enhancedData: any
   ): DetailedStockAnalysis {
-    const { quote, statistics, financials, balanceSheet, cashFlow, hasRealData } =
-      enhancedData;
+    const {
+      quote,
+      statistics,
+      financials,
+      balanceSheet,
+      cashFlow,
+      summary,
+      profile,
+      hasRealData,
+    } = enhancedData;
 
     console.log(`📊 Creating enhanced analysis for ${symbol}`);
     console.log(`📈 Has real data: ${hasRealData}`);
@@ -917,26 +962,35 @@ export class HybridStockService {
     const quoteData = quote || summaryData;
     const statsData = statistics?.defaultKeyStatistics || statistics;
     const profileData = profile?.assetProfile || profile;
-    
+
     // Extract real data or mark as null for N/A display
-    const currentPrice = summaryData?.regularMarketPrice?.raw || 
-                        quoteData?.regularMarketPrice || 
-                        summaryData?.currentPrice?.raw || null;
-    const marketCap = summaryData?.marketCap?.raw || 
-                     quoteData?.marketCap || 
-                     statsData?.marketCap?.raw || null;
-    const peRatio = summaryData?.trailingPE?.raw || 
-                   quoteData?.trailingPE || 
-                   statsData?.trailingPE?.raw || null;
-    const pbRatio = summaryData?.priceToBook?.raw || 
-                   quoteData?.priceToBook || 
-                   statsData?.priceToBook?.raw || null;
-                   
+    const currentPrice =
+      summaryData?.regularMarketPrice?.raw ||
+      quoteData?.regularMarketPrice ||
+      summaryData?.currentPrice?.raw ||
+      null;
+    const marketCap =
+      summaryData?.marketCap?.raw ||
+      quoteData?.marketCap ||
+      statsData?.marketCap?.raw ||
+      null;
+    const peRatio =
+      summaryData?.trailingPE?.raw ||
+      quoteData?.trailingPE ||
+      statsData?.trailingPE?.raw ||
+      null;
+    const pbRatio =
+      summaryData?.priceToBook?.raw ||
+      quoteData?.priceToBook ||
+      statsData?.priceToBook?.raw ||
+      null;
+
     // Company info from profile
-    const companyName = profileData?.longName || 
-                       quoteData?.shortName || 
-                       quoteData?.longName || 
-                       `${symbol.toUpperCase()} Limited`;
+    const companyName =
+      profileData?.longName ||
+      quoteData?.shortName ||
+      quoteData?.longName ||
+      `${symbol.toUpperCase()} Limited`;
     const sector = profileData?.sector || "N/A";
     const industry = profileData?.industry || "N/A";
     const description = profileData?.longBusinessSummary || null;
@@ -944,11 +998,15 @@ export class HybridStockService {
     // Create profitability metrics with real data sources - no mock fallbacks
     const profitability: Record<string, MetricWithSource> = {
       ROE: this.createMetricWithNA(
-        statsData?.returnOnEquity?.raw ? statsData.returnOnEquity.raw * 100 : null,
+        statsData?.returnOnEquity?.raw
+          ? statsData.returnOnEquity.raw * 100
+          : null,
         statsData?.returnOnEquity?.raw ? DataSource.RAPID_API_YAHOO : null
       ),
       ROA: this.createMetricWithNA(
-        statsData?.returnOnAssets?.raw ? statsData.returnOnAssets.raw * 100 : null,
+        statsData?.returnOnAssets?.raw
+          ? statsData.returnOnAssets.raw * 100
+          : null,
         statsData?.returnOnAssets?.raw ? DataSource.RAPID_API_YAHOO : null
       ),
       ROCE: this.createMetricWithNA(
@@ -960,11 +1018,15 @@ export class HybridStockService {
         statsData?.grossMargins?.raw ? DataSource.RAPID_API_YAHOO : null
       ),
       "Operating Margin": this.createMetricWithNA(
-        statsData?.operatingMargins?.raw ? statsData.operatingMargins.raw * 100 : null,
+        statsData?.operatingMargins?.raw
+          ? statsData.operatingMargins.raw * 100
+          : null,
         statsData?.operatingMargins?.raw ? DataSource.RAPID_API_YAHOO : null
       ),
       "Net Margin": this.createMetricWithNA(
-        statsData?.profitMargins?.raw ? statsData.profitMargins.raw * 100 : null,
+        statsData?.profitMargins?.raw
+          ? statsData.profitMargins.raw * 100
+          : null,
         statsData?.profitMargins?.raw ? DataSource.RAPID_API_YAHOO : null
       ),
     };
@@ -973,12 +1035,17 @@ export class HybridStockService {
     const liquidity: Record<string, MetricWithSource> = {
       "Current Ratio": this.createMetricWithNA(
         statsData?.currentRatio?.raw ||
-        (balanceSheet?.totalCurrentAssets && balanceSheet?.totalCurrentLiabilities
-          ? balanceSheet.totalCurrentAssets / balanceSheet.totalCurrentLiabilities
-          : null),
-        statsData?.currentRatio?.raw ? DataSource.RAPID_API_YAHOO :
-        (balanceSheet?.totalCurrentAssets && balanceSheet?.totalCurrentLiabilities)
-          ? DataSource.RAPID_API_YAHOO : null
+          (balanceSheet?.totalCurrentAssets &&
+          balanceSheet?.totalCurrentLiabilities
+            ? balanceSheet.totalCurrentAssets /
+              balanceSheet.totalCurrentLiabilities
+            : null),
+        statsData?.currentRatio?.raw
+          ? DataSource.RAPID_API_YAHOO
+          : balanceSheet?.totalCurrentAssets &&
+            balanceSheet?.totalCurrentLiabilities
+          ? DataSource.RAPID_API_YAHOO
+          : null
       ),
       "Quick Ratio": this.createMetricWithNA(
         statsData?.quickRatio?.raw || null,
@@ -986,12 +1053,14 @@ export class HybridStockService {
       ),
       "Debt-to-Equity": this.createMetricWithNA(
         statsData?.debtToEquity?.raw ||
-        (balanceSheet?.totalDebt && balanceSheet?.shareholderEquity
-          ? balanceSheet.totalDebt / balanceSheet.shareholderEquity
-          : null),
-        statsData?.debtToEquity?.raw ? DataSource.RAPID_API_YAHOO :
-        (balanceSheet?.totalDebt && balanceSheet?.shareholderEquity)
-          ? DataSource.RAPID_API_YAHOO : null
+          (balanceSheet?.totalDebt && balanceSheet?.shareholderEquity
+            ? balanceSheet.totalDebt / balanceSheet.shareholderEquity
+            : null),
+        statsData?.debtToEquity?.raw
+          ? DataSource.RAPID_API_YAHOO
+          : balanceSheet?.totalDebt && balanceSheet?.shareholderEquity
+          ? DataSource.RAPID_API_YAHOO
+          : null
       ),
       "Interest Coverage": this.createMetricWithNA(
         null, // Not typically available in Yahoo Finance API
@@ -1011,44 +1080,63 @@ export class HybridStockService {
       ),
       "P/S Ratio": this.createMetricWithNA(
         statsData?.priceToSalesTrailing12Months?.raw || null,
-        statsData?.priceToSalesTrailing12Months?.raw ? DataSource.RAPID_API_YAHOO : null
+        statsData?.priceToSalesTrailing12Months?.raw
+          ? DataSource.RAPID_API_YAHOO
+          : null
       ),
       "EV/EBITDA": this.createMetricWithNA(
-        (statsData?.enterpriseValue?.raw && statsData?.ebitda?.raw)
+        statsData?.enterpriseValue?.raw && statsData?.ebitda?.raw
           ? statsData.enterpriseValue.raw / statsData.ebitda.raw
           : null,
-        (statsData?.enterpriseValue?.raw && statsData?.ebitda?.raw)
-          ? DataSource.RAPID_API_YAHOO : null
+        statsData?.enterpriseValue?.raw && statsData?.ebitda?.raw
+          ? DataSource.RAPID_API_YAHOO
+          : null
       ),
       "Dividend Yield": this.createMetricWithNA(
-        summaryData?.dividendYield?.raw ? summaryData.dividendYield.raw * 100 :
-        quoteData?.dividendYield ? quoteData.dividendYield * 100 : null,
-        (summaryData?.dividendYield?.raw || quoteData?.dividendYield) ? DataSource.RAPID_API_YAHOO : null
+        summaryData?.dividendYield?.raw
+          ? summaryData.dividendYield.raw * 100
+          : quoteData?.dividendYield
+          ? quoteData.dividendYield * 100
+          : null,
+        summaryData?.dividendYield?.raw || quoteData?.dividendYield
+          ? DataSource.RAPID_API_YAHOO
+          : null
       ),
     };
 
     // Create growth metrics - these require historical data, mostly N/A
     const growth: Record<string, MetricWithSource> = {
       "Revenue CAGR (3Y)": this.createMetricWithNA(null, null),
-      "EPS Growth (3Y)": this.createMetricWithNA(null, null), 
+      "EPS Growth (3Y)": this.createMetricWithNA(null, null),
       "Market Share Growth": this.createMetricWithNA(null, null),
     };
 
     return {
       symbol: symbol.toUpperCase(),
       name: companyName,
-      about: description || 
+      about:
+        description ||
         (hasRealData
           ? `${companyName} - Real-time data available from Yahoo Finance API. Company operates in the ${sector} sector.`
           : `${symbol.toUpperCase()} - Limited data available from Yahoo Finance API for this symbol.`),
-      keyPoints: this.createKeyPoints(symbol, currentPrice, marketCap, peRatio, hasRealData, sector, industry),
+      keyPoints: this.createKeyPoints(
+        symbol,
+        currentPrice,
+        marketCap,
+        peRatio,
+        hasRealData,
+        sector,
+        industry
+      ),
       currentPrice: currentPrice || 0,
       marketCap: marketCap || 0,
       sector: sector,
       industry: industry,
       financialHealth: {
         statements: {
-          incomeStatement: hasRealData ? HealthStatus.GOOD : HealthStatus.NORMAL,
+          incomeStatement: hasRealData
+            ? HealthStatus.GOOD
+            : HealthStatus.NORMAL,
           balanceSheet: balanceSheet ? HealthStatus.GOOD : HealthStatus.NORMAL,
           cashFlow: cashFlow ? HealthStatus.GOOD : HealthStatus.NORMAL,
         },
@@ -1092,7 +1180,12 @@ export class HybridStockService {
           currentPrice * 1.2
         ),
       },
-      pros: this.createProsBasedOnData(hasRealData, currentPrice, marketCap, profileData),
+      pros: this.createProsBasedOnData(
+        hasRealData,
+        currentPrice,
+        marketCap,
+        profileData
+      ),
       cons: this.createConsBasedOnData(hasRealData, symbol),
       priceHistory: [],
       lastUpdated: new Date(),
@@ -1552,7 +1645,11 @@ export const getStockChartData = async (
   symbol: string,
   range: string = "1mo",
   interval: string = "1d"
-): Promise<{ data: PriceData[]; isRealData: boolean; dataSource: DataSource }> => {
+): Promise<{
+  data: PriceData[];
+  isRealData: boolean;
+  dataSource: DataSource;
+}> => {
   const service = new HybridStockService();
   return await service.getChartData(symbol, range, interval);
 };
@@ -1560,69 +1657,80 @@ export const getStockChartData = async (
 // Get only real API metrics (no mock data)
 export const getRealStockMetrics = async (symbol: string) => {
   console.log(`🔍 Fetching ONLY real metrics for ${symbol}`);
-  
+
   try {
     const service = new HybridStockService();
     const enhancedData = await service.getEnhancedFinancialData(symbol);
-    
+
     if (!enhancedData.hasRealData) {
       console.log(`❌ No real data available for ${symbol}`);
       return null;
     }
 
     const { quote, statistics } = enhancedData;
-    
+
     // Extract only confirmed real metrics from Yahoo Finance API
     const realMetrics = {
       // Basic price and market data
       currentPrice: quote?.regularMarketPrice || null,
       marketCap: quote?.marketCap || null,
       volume: quote?.regularMarketVolume || null,
-      
+
       // Price ranges (real 52-week high/low)
       fiftyTwoWeekHigh: quote?.fiftyTwoWeekHigh || null,
       fiftyTwoWeekLow: quote?.fiftyTwoWeekLow || null,
       regularMarketDayHigh: quote?.regularMarketDayHigh || null,
       regularMarketDayLow: quote?.regularMarketDayLow || null,
-      
+
       // Valuation ratios
       peRatio: quote?.trailingPE || statistics?.priceToEarnings || null,
       pbRatio: quote?.priceToBook || statistics?.priceToBook || null,
       psRatio: statistics?.priceToSales || null,
       pegRatio: statistics?.pegRatio || null,
-      
+
       // Profitability metrics
-      returnOnEquity: statistics?.returnOnEquity ? statistics.returnOnEquity * 100 : null,
-      returnOnAssets: statistics?.returnOnAssets ? statistics.returnOnAssets * 100 : null,
-      profitMargins: statistics?.profitMargins ? statistics.profitMargins * 100 : null,
-      operatingMargins: statistics?.operatingMargins ? statistics.operatingMargins * 100 : null,
-      grossMargins: statistics?.grossMargins ? statistics.grossMargins * 100 : null,
-      
+      returnOnEquity: statistics?.returnOnEquity
+        ? statistics.returnOnEquity * 100
+        : null,
+      returnOnAssets: statistics?.returnOnAssets
+        ? statistics.returnOnAssets * 100
+        : null,
+      profitMargins: statistics?.profitMargins
+        ? statistics.profitMargins * 100
+        : null,
+      operatingMargins: statistics?.operatingMargins
+        ? statistics.operatingMargins * 100
+        : null,
+      grossMargins: statistics?.grossMargins
+        ? statistics.grossMargins * 100
+        : null,
+
       // Dividends
       dividendYield: quote?.dividendYield ? quote.dividendYield * 100 : null,
-      
+
       // Financial health
       currentRatio: statistics?.currentRatio || null,
       quickRatio: statistics?.quickRatio || null,
       debtToEquity: statistics?.debtToEquity || null,
-      
+
       // Company info
       companyName: quote?.shortName || quote?.longName || null,
-      currency: quote?.currency || 'INR',
+      currency: quote?.currency || "INR",
       exchange: quote?.fullExchangeName || quote?.exchangeName || null,
-      
+
       // Market performance
       beta: statistics?.beta || null,
-      
+
       // Enterprise metrics
       enterpriseValue: statistics?.enterpriseValue || null,
       ebitda: statistics?.ebitda || null,
-      
+
       // Book value (calculated from real P/B ratio)
-      bookValuePerShare: (quote?.regularMarketPrice && statistics?.priceToBook) 
-        ? quote.regularMarketPrice / statistics.priceToBook 
-        : null,
-        
+      bookValuePerShare:
+        quote?.regularMarketPrice && statistics?.priceToBook
+          ? quote.regularMarketPrice / statistics.priceToBook
+          : null,
+
       // Additional real metrics
       earningsPerShare: statistics?.trailingEps || null,
       forwardPE: statistics?.forwardPE || null,
@@ -1634,15 +1742,17 @@ export const getRealStockMetrics = async (symbol: string) => {
       Object.entries(realMetrics).filter(([_, value]) => value !== null)
     );
 
-    console.log(`✅ Real metrics available for ${symbol}:`, Object.keys(filteredMetrics));
-    
+    console.log(
+      `✅ Real metrics available for ${symbol}:`,
+      Object.keys(filteredMetrics)
+    );
+
     return {
       symbol,
       metrics: filteredMetrics,
       dataSource: DataSource.RAPID_API_YAHOO,
       timestamp: new Date(),
     };
-    
   } catch (error) {
     console.error(`❌ Failed to get real metrics for ${symbol}:`, error);
     return null;
