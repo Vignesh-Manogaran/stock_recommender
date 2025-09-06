@@ -115,24 +115,30 @@ class RapidApiYahooService {
   private readonly apiKey: string;
 
   constructor() {
-    // Try different environment variable names (Vercel uses RAPIDAPI_KEY, local dev uses VITE_RAPIDAPI_KEY)
+    console.log("🚀 RapidApiYahooService constructor called");
+    console.log("🌍 Environment variables available:", {
+      nodeEnv: import.meta.env.MODE,
+      allImportMetaEnv: Object.keys(import.meta.env || {}),
+      viteRapidApiKey: !!import.meta.env.VITE_RAPIDAPI_KEY,
+      rapidApiKey: !!import.meta.env.RAPIDAPI_KEY
+    });
+    
+    // In Vite/browser context, use import.meta.env
+    // For production/Vercel, RAPIDAPI_KEY should be available
+    // For local development, VITE_RAPIDAPI_KEY should be used
     this.apiKey =
-      process.env.RAPIDAPI_KEY ||
-      process.env.VITE_RAPIDAPI_KEY ||
       import.meta.env.VITE_RAPIDAPI_KEY ||
       import.meta.env.RAPIDAPI_KEY ||
       "";
 
-    console.log("🔍 API Key check:", {
-      hasProcessRapidApi: !!process.env.RAPIDAPI_KEY,
-      hasProcessViteRapidApi: !!process.env.VITE_RAPIDAPI_KEY,
-      hasImportMetaViteRapidApi: !!import.meta.env.VITE_RAPIDAPI_KEY,
-      hasImportMetaRapidApi: !!import.meta.env.RAPIDAPI_KEY,
+    console.log("🔍 Final API Key check:", {
       finalKeySet: !!this.apiKey,
-      keyPrefix: this.apiKey ? this.apiKey.substring(0, 8) + "..." : "NOT SET"
+      keyLength: this.apiKey?.length || 0,
+      keyPrefix: this.apiKey ? this.apiKey.substring(0, 8) + "..." : "NOT SET",
+      isPlaceholder: this.apiKey === "PLEASE_ADD_YOUR_RAPIDAPI_KEY_HERE" || this.apiKey.includes("test-key")
     });
 
-    if (!this.apiKey || this.apiKey === "PLEASE_ADD_YOUR_RAPIDAPI_KEY_HERE") {
+    if (!this.apiKey || this.apiKey === "PLEASE_ADD_YOUR_RAPIDAPI_KEY_HERE" || this.apiKey.includes("test-key")) {
       console.warn(
         "⚠️ RapidAPI key not configured. For local development, add VITE_RAPIDAPI_KEY to .env file"
       );
@@ -551,7 +557,9 @@ class RapidApiYahooService {
    * Check if RapidAPI service is available
    */
   isAvailable(): boolean {
-    return !!this.apiKey && this.apiKey !== "PLEASE_ADD_YOUR_RAPIDAPI_KEY_HERE";
+    return !!this.apiKey && 
+           this.apiKey !== "PLEASE_ADD_YOUR_RAPIDAPI_KEY_HERE" && 
+           !this.apiKey.includes("test-key");
   }
 
   /**
