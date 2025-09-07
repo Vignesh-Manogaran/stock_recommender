@@ -259,6 +259,26 @@ export class HybridStockService {
       );
     }
 
+    // As a last attempt, try direct RapidAPI Yahoo without proxy
+    try {
+      if (rapidApiYahooService.isAvailable()) {
+        console.log(`🛠️ Fallback: trying direct RapidAPI Yahoo for ${symbol} (no proxy)...`);
+        const enhancedData = await this.getEnhancedFinancialData(symbol);
+        if (enhancedData.hasRealData) {
+          console.log(`✅ Direct RapidAPI Yahoo success for ${symbol} (no proxy)`);
+          return this.createEnhancedAnalysis(symbol, enhancedData);
+        }
+      } else {
+        console.log(`🔑 RapidAPI key not configured; skipping direct RapidAPI fallback.`);
+      }
+    } catch (error) {
+      console.log(
+        `⚠️ Direct RapidAPI Yahoo fallback failed: ${
+          error instanceof Error ? error.message : String(error)
+        }`
+      );
+    }
+
     // Fallback to mock data so app doesn't break during API testing
     console.log(`🎭 ================================`);
     console.log(`🎭 ALL APIS FAILED FOR ${symbol}`);
@@ -1437,7 +1457,11 @@ export class HybridStockService {
   private convertRapidYahooDataToAnalysis(data: any): DetailedStockAnalysis {
     // Extract quote data from RapidAPI Yahoo response structure
     const result = data.optionChain?.result;
-    const quote = result?.[0]?.quote || data.quote || data;
+    const quote =
+      result?.[0]?.quote ||
+      data.quoteResponse?.result?.[0] ||
+      data.quote ||
+      data;
 
     console.log(`🔄 Extracting data from RapidAPI response structure:`);
     console.log(`📊 Full optionChain result:`, result);
@@ -1523,7 +1547,6 @@ export class HybridStockService {
         risks: HealthStatus.NORMAL,
         outlook: HealthStatus.GOOD,
       },
-      // Add technicalIndicators (what UI expects)
       technicalIndicators: {
         stochasticRSI: this.generateTechnicalIndicator(
           "Stochastic RSI",
@@ -1549,47 +1572,6 @@ export class HybridStockService {
           currentPrice * 1.2,
           currentPrice * 0.8
         ),
-        support: [
-          currentPrice * 0.95,
-          currentPrice * 0.92,
-          currentPrice * 0.88,
-        ],
-        resistance: [
-          currentPrice * 1.05,
-          currentPrice * 1.08,
-          currentPrice * 1.12,
-        ],
-      },
-      // Keep technicalAnalysis for compatibility
-      technicalAnalysis: {
-        stochasticRSI: {
-          value: 65,
-          signal: SignalType.BUY,
-          health: HealthStatus.GOOD,
-          targetPrice: currentPrice * 1.08,
-          stopLoss: currentPrice * 0.95,
-        },
-        connorsRSI: {
-          value: 72,
-          signal: SignalType.SELL,
-          health: HealthStatus.NORMAL,
-          targetPrice: currentPrice * 0.97,
-          stopLoss: currentPrice * 1.03,
-        },
-        macd: {
-          value: 1.2,
-          signal: SignalType.BUY,
-          health: HealthStatus.GOOD,
-          targetPrice: currentPrice * 1.05,
-          stopLoss: currentPrice * 0.97,
-        },
-        patterns: {
-          value: 60,
-          signal: SignalType.BUY,
-          health: HealthStatus.GOOD,
-          targetPrice: currentPrice * 1.12,
-          stopLoss: currentPrice * 0.92,
-        },
         support: [
           currentPrice * 0.95,
           currentPrice * 0.92,
