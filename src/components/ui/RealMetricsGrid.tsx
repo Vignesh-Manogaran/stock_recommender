@@ -71,35 +71,58 @@ const RealMetricsGrid: React.FC<RealMetricsGridProps> = ({
       return 'N/A';
     }
 
-    const value = metric.value;
-    
-    if (!value && value !== 0) return 'N/A';
-    
+    const raw = metric.value as unknown;
+    if (raw === null || raw === undefined) return 'N/A';
+
+    // If value is already a string (e.g., currency code, company name), return it directly
+    if (typeof raw === 'string') return raw;
+
+    // Attempt to coerce to number when possible
+    const num = typeof raw === 'number' ? raw : Number(raw);
+    const isNumber = Number.isFinite(num);
+
+    if (!isNumber) {
+      // Fallback: render as string for non-numeric, non-null values
+      try {
+        return String(raw);
+      } catch {
+        return 'N/A';
+      }
+    }
+
     // Format currency values
     if (key.includes('Price') || key.includes('Value') || key.includes('Cap')) {
-      if (value > 10000000000) {
-        return `₹${((value || 0) / 10000000000).toFixed(1)}B`;
-      } else if (value > 10000000) {
-        return `₹${((value || 0) / 10000000).toFixed(0)}Cr`;
-      } else if (value > 100000) {
-        return `₹${((value || 0) / 100000).toFixed(1)}L`;
+      if (num > 10000000000) {
+        return `₹${(num / 10000000000).toFixed(1)}B`;
+      } else if (num > 10000000) {
+        return `₹${(num / 10000000).toFixed(0)}Cr`;
+      } else if (num > 100000) {
+        return `₹${(num / 100000).toFixed(1)}L`;
       } else {
-        return `₹${(value || 0).toLocaleString("en-IN")}`;
+        return `₹${num.toLocaleString("en-IN")}`;
       }
     }
     
     // Format percentage values
-    if (key.includes('Margin') || key.includes('ROE') || key.includes('ROA') || key.includes('ROCE') || key.includes('Growth') || key.includes('Yield')) {
-      return `${(value || 0).toFixed(1)}%`;
+    if (
+      key.includes('Margin') ||
+      key.includes('ROE') ||
+      key.includes('ROA') ||
+      key.includes('ROCE') ||
+      key.includes('Growth') ||
+      key.includes('Yield') ||
+      key.includes('Percent')
+    ) {
+      return `${num.toFixed(1)}%`;
     }
     
     // Format ratio values
     if (key.includes('Ratio') || key.includes('Coverage')) {
-      return (value || 0).toFixed(2);
+      return num.toFixed(2);
     }
     
     // Default formatting
-    return (value || 0).toFixed(1);
+    return num.toFixed(1);
   };
 
   // If no metrics available, show message
