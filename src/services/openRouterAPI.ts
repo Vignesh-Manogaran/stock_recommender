@@ -66,10 +66,14 @@ class OpenRouterAPIService {
 
   constructor() {
     this.apiKey = OPENROUTER_API_KEY || "";
-    if (!this.apiKey) {
+    if (!this.apiKey || this.apiKey === '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') {
       console.warn(
-        "OpenRouter API key not found. Using mock data for development."
+        "❌ OpenRouter API key not found or invalid. Using mock data for development."
       );
+      console.warn("🔑 To get a valid API key, visit: https://openrouter.ai/keys");
+      this.apiKey = ""; // Clear invalid key
+    } else {
+      console.log("✅ OpenRouter API key configured");
     }
   }
 
