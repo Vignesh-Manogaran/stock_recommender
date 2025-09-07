@@ -225,7 +225,7 @@ const StockPriceChart: React.FC<StockPriceChartProps> = ({
                 }`}
               >
                 {priceChange >= 0 ? "+" : ""}
-                {priceChange.toFixed(2)}%
+                {priceChange?.toFixed(2) || "0.00"}%
               </span>
               <span className="text-xs text-gray-500">
                 {isRealData ? "Real-time" : "Estimated"}
@@ -323,7 +323,7 @@ const StockPriceChart: React.FC<StockPriceChartProps> = ({
         <div className="text-center">
           <p className="text-xs text-gray-600 mb-1">Range</p>
           <p className="text-sm font-semibold text-gray-900">
-            {(((maxPrice - minPrice) / minPrice) * 100).toFixed(1)}%
+            {maxPrice && minPrice ? (((maxPrice - minPrice) / minPrice) * 100).toFixed(1) : "0.0"}%
           </p>
         </div>
         <div className="text-center">

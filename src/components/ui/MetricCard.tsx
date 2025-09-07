@@ -26,7 +26,7 @@ const MetricCard: React.FC<MetricCardProps> = ({
   // Format the value
   const formatValue = (value: number) => {
     if (formatter) return formatter(value);
-    return value.toFixed(1) + suffix;
+    return (value || 0).toFixed(1) + suffix;
   };
 
   // Get health color

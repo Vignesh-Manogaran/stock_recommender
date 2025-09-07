@@ -143,7 +143,7 @@ const SearchInput: React.FC<SearchInputProps> = ({
 
   const formatChange = (change: number, changePercent: number): string => {
     const sign = change >= 0 ? '+' : '';
-    return `${sign}${change.toFixed(2)} (${sign}${changePercent.toFixed(2)}%)`;
+    return `${sign}${(change || 0).toFixed(2)} (${sign}${(changePercent || 0).toFixed(2)}%)`;
   };
 
   return (

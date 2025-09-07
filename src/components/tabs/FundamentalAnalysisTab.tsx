@@ -292,7 +292,7 @@ const FundamentalAnalysisTab: React.FC<FundamentalAnalysisTabProps> = ({
                           key === "ROA" ||
                           key === "ROCE"
                           ? formatPercent(metric?.value || 0)
-                          : (metric?.value || 0).toFixed(1),
+                          : ((metric?.value || 0)).toFixed(1),
                         metric?.health || HealthStatus.NORMAL
                       )
                     }
