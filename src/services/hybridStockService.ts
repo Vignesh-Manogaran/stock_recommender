@@ -989,6 +989,44 @@ export class HybridStockService {
     const industry = profileData?.industry || "N/A";
     const description = profileData?.longBusinessSummary || null;
 
+    // ---------- Derived metrics from financial statements ----------
+    // Interest Coverage = EBIT / InterestExpense (fallback to OperatingIncome if EBIT missing)
+    const annualIS = financials?.incomeStatementHistory?.incomeStatementHistory || [];
+    const quarterlyIS = financials?.incomeStatementHistoryQuarterly?.incomeStatementHistory || [];
+
+    const pickInterestCoverage = (items: any[]): number | null => {
+      for (const it of items) {
+        const ebit = it?.ebit?.raw ?? it?.ebit ?? it?.operatingIncome?.raw ?? it?.operatingIncome;
+        const interest = it?.interestExpense?.raw ?? it?.interestExpense;
+        const e = typeof ebit === "number" ? ebit : Number(ebit);
+        const i = typeof interest === "number" ? interest : Number(interest);
+        if (isFinite(e) && isFinite(i) && Math.abs(i) > 0) {
+          return e / Math.abs(i);
+        }
+      }
+      return null;
+    };
+
+    const interestCoverageValue =
+      pickInterestCoverage(annualIS) ?? pickInterestCoverage(quarterlyIS);
+
+    // Growth metrics from earnings.financialsChart.yearly
+    const yearly = financials?.earnings?.financialsChart?.yearly || [];
+    const revSeries: number[] = yearly
+      .map((y: any) => y?.revenue?.raw ?? y?.revenue)
+      .filter((n: any) => typeof n === "number" && isFinite(n));
+    const earningsSeries: number[] = yearly
+      .map((y: any) => y?.earnings?.raw ?? y?.earnings)
+      .filter((n: any) => typeof n === "number" && isFinite(n));
+
+    const revenueCAGR3Y = this.computeCAGRFromSeries(
+      revSeries.length >= 4 ? revSeries.slice(-4) : revSeries
+    );
+    // EPS Growth (3Y) approximation using Net Income CAGR when EPS history is unavailable
+    const epsGrowth3Y = this.computeCAGRFromSeries(
+      earningsSeries.length >= 4 ? earningsSeries.slice(-4) : earningsSeries
+    );
+
     // Create profitability metrics with real data sources - no mock fallbacks
     const profitability: Record<string, MetricWithSource> = {
       ROE: this.createMetricWithNA(
@@ -1056,10 +1094,15 @@ export class HybridStockService {
           ? DataSource.RAPID_API_YAHOO
           : null
       ),
-      "Interest Coverage": this.createMetricWithNA(
-        null, // Not typically available in Yahoo Finance API
-        null
-      ),
+      "Interest Coverage":
+        interestCoverageValue !== null
+          ? {
+              value: interestCoverageValue,
+              dataSource: DataSource.CALCULATED,
+              health: this.assessInterestCoverageHealth(interestCoverageValue),
+              lastUpdated: new Date(),
+            }
+          : this.createMetricWithNA(null, null),
     };
 
     // Create valuation metrics with real data sources - no mock fallbacks
@@ -1098,10 +1141,17 @@ export class HybridStockService {
       ),
     };
 
-    // Create growth metrics - these require historical data, mostly N/A
+    // Create growth metrics using earnings history where available
     const growth: Record<string, MetricWithSource> = {
-      "Revenue CAGR (3Y)": this.createMetricWithNA(null, null),
-      "EPS Growth (3Y)": this.createMetricWithNA(null, null),
+      "Revenue CAGR (3Y)": this.createMetricWithNA(
+        revenueCAGR3Y !== null ? revenueCAGR3Y : null,
+        revenueCAGR3Y !== null ? DataSource.CALCULATED : null
+      ),
+      "EPS Growth (3Y)": this.createMetricWithNA(
+        epsGrowth3Y !== null ? epsGrowth3Y : null,
+        epsGrowth3Y !== null ? DataSource.CALCULATED : null
+      ),
+      // Not available from Yahoo directly; leaving as N/A for now
       "Market Share Growth": this.createMetricWithNA(null, null),
     };
 
@@ -1315,6 +1365,26 @@ export class HybridStockService {
       Math.round(currentPrice * 1.12 * 100) / 100,
       Math.round(Math.min(high52w, currentPrice * 1.2) * 100) / 100,
     ];
+  }
+
+  // Compute CAGR given a series of yearly values (oldest -> newest)
+  private computeCAGRFromSeries(values: number[]): number | null {
+    if (!values || values.length < 2) return null;
+    const first = values[0];
+    const last = values[values.length - 1];
+    if (!first || !last || first <= 0 || last <= 0) return null;
+    const years = values.length - 1;
+    const cagr = Math.pow(last / first, 1 / years) - 1;
+    return isFinite(cagr) ? cagr * 100 : null; // return percentage
+  }
+
+  // Assess health specifically for Interest Coverage ratio
+  private assessInterestCoverageHealth(value: number): HealthStatus {
+    if (value >= 5) return HealthStatus.BEST;
+    if (value >= 3) return HealthStatus.GOOD;
+    if (value >= 1.5) return HealthStatus.NORMAL;
+    if (value > 0) return HealthStatus.BAD;
+    return HealthStatus.WORSE;
   }
 
   // Test method to compare data sources
