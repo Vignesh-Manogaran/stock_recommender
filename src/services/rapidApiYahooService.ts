@@ -110,52 +110,78 @@ export interface RapidApiYahooChart {
 }
 
 class RapidApiYahooService {
-  private readonly baseUrl =
-    "https://yahoo-finance-real-time1.p.rapidapi.com";
-  private readonly apiKey: string;
+  private apiKey: string;
+  private baseUrl = 'https://yahoo-finance-real-time1.p.rapidapi.com';
+  private headers: Record<string, string>;
+  private rateLimitReset: number = 0;
+  private requestCount: number = 0;
+  private maxRequestsPerMinute: number = 100; // Conservative limit
 
   constructor() {
-    console.log("🚀 RapidApiYahooService constructor called");
-    console.log("🌍 Environment variables available:", {
-      nodeEnv: import.meta.env.MODE,
-      allImportMetaEnv: Object.keys(import.meta.env || {}),
-      viteRapidApiKey: !!import.meta.env.VITE_RAPIDAPI_KEY,
-      rapidApiKey: !!import.meta.env.RAPIDAPI_KEY
-    });
-    
-    // In Vite/browser context, use import.meta.env
-    // For production/Vercel, RAPIDAPI_KEY should be available
-    // For local development, VITE_RAPIDAPI_KEY should be used
-    this.apiKey =
-      import.meta.env.VITE_RAPIDAPI_KEY ||
-      import.meta.env.RAPIDAPI_KEY ||
-      "";
-
-    console.log("🔍 Final API Key check:", {
-      finalKeySet: !!this.apiKey,
-      keyLength: this.apiKey?.length || 0,
-      keyPrefix: this.apiKey ? this.apiKey.substring(0, 8) + "..." : "NOT SET",
-      isPlaceholder: this.apiKey === "PLEASE_ADD_YOUR_RAPIDAPI_KEY_HERE" || this.apiKey.includes("test-key")
-    });
-
-    if (!this.apiKey || this.apiKey === "PLEASE_ADD_YOUR_RAPIDAPI_KEY_HERE" || this.apiKey.includes("test-key")) {
-      console.warn(
-        "⚠️ RapidAPI key not configured. For local development, add VITE_RAPIDAPI_KEY to .env file"
-      );
-      console.warn(
-        "🔑 For Vercel deployment, ensure RAPIDAPI_KEY is set in environment variables"
-      );
-    } else {
-      console.log("✅ RapidAPI key configured successfully");
-    }
+    this.apiKey = import.meta.env.VITE_RAPIDAPI_KEY || '';
+    this.headers = {
+      'X-RapidAPI-Key': this.apiKey,
+      'X-RapidAPI-Host': 'yahoo-finance-real-time1.p.rapidapi.com',
+    };
   }
 
-  private getHeaders() {
-    return {
-      "X-RapidAPI-Key": this.apiKey,
-      "X-RapidAPI-Host": "yahoo-finance-real-time1.p.rapidapi.com",
-      "Content-Type": "application/json",
-    };
+  // Check if we're rate limited
+  private isRateLimited(): boolean {
+    const now = Date.now();
+    if (now < this.rateLimitReset) {
+      console.log(`🚫 Rate limited until ${new Date(this.rateLimitReset).toLocaleTimeString()}`);
+      return true;
+    }
+    if (this.requestCount >= this.maxRequestsPerMinute) {
+      this.rateLimitReset = now + 60000; // Reset in 1 minute
+      this.requestCount = 0;
+      console.log(`🚫 Rate limit reached, waiting until ${new Date(this.rateLimitReset).toLocaleTimeString()}`);
+      return true;
+    }
+    return false;
+  }
+
+  // Make API request with better error handling
+  private async makeRequest(url: string): Promise<any> {
+    if (this.isRateLimited()) {
+      throw new Error('Rate limited - please wait before making more requests');
+    }
+
+    this.requestCount++;
+    
+    try {
+      console.log(`🔗 Making RapidAPI request to: ${url}`);
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: this.headers,
+      });
+
+      // Handle rate limiting
+      if (response.status === 429) {
+        const retryAfter = response.headers.get('Retry-After');
+        const resetTime = retryAfter 
+          ? Date.now() + parseInt(retryAfter) * 1000 
+          : Date.now() + 60000;
+        
+        this.rateLimitReset = resetTime;
+        console.log(`🚫 Rate limited by API, retry after ${new Date(resetTime).toLocaleTimeString()}`);
+        throw new Error(`Rate limited - retry after ${Math.ceil((resetTime - Date.now()) / 1000)} seconds`);
+      }
+
+      // Handle other errors
+      if (!response.ok) {
+        console.log(`❌ API Error ${response.status}: ${response.statusText}`);
+        throw new Error(`API Error ${response.status}: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      console.log(`✅ RapidAPI request successful`);
+      return data;
+
+    } catch (error) {
+      console.error('RapidAPI request failed:', error);
+      throw error;
+    }
   }
 
   /**
@@ -215,22 +241,13 @@ class RapidApiYahooService {
         `📡 RapidAPI Yahoo: Getting quote for ${symbol} -> ${yahooSymbol}`
       );
 
-      const response = await fetch(`${this.baseUrl}/market/get-quotes?region=IN&symbols=${yahooSymbol}`, {
-        method: "GET",
-        headers: this.getHeaders(),
-      });
+      const response = await this.makeRequest(`${this.baseUrl}/market/get-quotes?region=IN&symbols=${yahooSymbol}`);
 
-      if (!response.ok) {
-        throw new Error(
-          `RapidAPI Yahoo Finance returned ${response.status}: ${response.statusText}`
-        );
-      }
-
-      const data = await response.json();
+      const data = response.body;
       console.log(`✅ RapidAPI Yahoo: Quote data received for ${yahooSymbol}`, data);
 
       // Extract quote from response
-      return data?.body?.quoteSummary?.result?.[0]?.quote || data?.body?.quote || null;
+      return data.quoteSummary.result[0].quote || data.quote || null;
     } catch (error) {
       console.error(`❌ RapidAPI Yahoo quote failed for ${symbol}:`, error);
       return null;
@@ -247,26 +264,14 @@ class RapidApiYahooService {
         `📡 RapidAPI Yahoo: Getting financials for ${symbol} -> ${yahooSymbol}`
       );
 
-      const response = await fetch(
-        `${this.baseUrl}/stock/get-financials?symbol=${yahooSymbol}&lang=en-US&region=IN`,
-        {
-          method: "GET",
-          headers: this.getHeaders(),
-        }
-      );
+      const response = await this.makeRequest(`${this.baseUrl}/stock/get-financials?symbol=${yahooSymbol}&lang=en-US&region=IN`);
 
-      if (!response.ok) {
-        throw new Error(
-          `RapidAPI Yahoo Financials returned ${response.status}: ${response.statusText}`
-        );
-      }
-
-      const data = await response.json();
+      const data = response.quoteSummary.result[0];
       console.log(
         `✅ RapidAPI Yahoo: Financials data received for ${yahooSymbol}`, data
       );
 
-      return data?.quoteSummary?.result?.[0] || data;
+      return data;
     } catch (error) {
       console.error(
         `❌ RapidAPI Yahoo financials failed for ${symbol}:`,
@@ -286,21 +291,9 @@ class RapidApiYahooService {
         `📡 RapidAPI Yahoo: Getting historical data for ${symbol} -> ${yahooSymbol}`
       );
 
-      const response = await fetch(
-        `${this.baseUrl}/historical/${yahooSymbol}?period=${period}`,
-        {
-          method: "GET",
-          headers: this.getHeaders(),
-        }
-      );
+      const response = await this.makeRequest(`${this.baseUrl}/historical/${yahooSymbol}?period=${period}`);
 
-      if (!response.ok) {
-        throw new Error(
-          `RapidAPI Yahoo Historical returned ${response.status}: ${response.statusText}`
-        );
-      }
-
-      const data = await response.json();
+      const data = response;
       console.log(
         `✅ RapidAPI Yahoo: Historical data received for ${yahooSymbol}`
       );
@@ -325,26 +318,14 @@ class RapidApiYahooService {
         `📡 RapidAPI Yahoo: Getting statistics for ${symbol} -> ${yahooSymbol}`
       );
 
-      const response = await fetch(
-        `${this.baseUrl}/stock/get-statistics?region=IN&lang=en-US&symbol=${yahooSymbol}`,
-        {
-          method: "GET",
-          headers: this.getHeaders(),
-        }
-      );
+      const response = await this.makeRequest(`${this.baseUrl}/stock/get-statistics?region=IN&lang=en-US&symbol=${yahooSymbol}`);
 
-      if (!response.ok) {
-        throw new Error(
-          `RapidAPI Yahoo Statistics returned ${response.status}: ${response.statusText}`
-        );
-      }
-
-      const data = await response.json();
+      const data = response.quoteSummary.result[0];
       console.log(
         `✅ RapidAPI Yahoo: Statistics data received for ${yahooSymbol}`, data
       );
 
-      return data?.quoteSummary?.result?.[0] || data;
+      return data;
     } catch (error) {
       console.error(
         `❌ RapidAPI Yahoo statistics failed for ${symbol}:`,
@@ -364,26 +345,14 @@ class RapidApiYahooService {
         `📡 RapidAPI Yahoo: Getting balance sheet for ${symbol} -> ${yahooSymbol}`
       );
 
-      const response = await fetch(
-        `${this.baseUrl}/stock/get-balance-sheet?lang=en-US&region=IN&symbol=${yahooSymbol}`,
-        {
-          method: "GET",
-          headers: this.getHeaders(),
-        }
-      );
+      const response = await this.makeRequest(`${this.baseUrl}/stock/get-balance-sheet?lang=en-US&region=IN&symbol=${yahooSymbol}`);
 
-      if (!response.ok) {
-        throw new Error(
-          `RapidAPI Yahoo Balance Sheet returned ${response.status}: ${response.statusText}`
-        );
-      }
-
-      const data = await response.json();
+      const data = response.quoteSummary.result[0];
       console.log(
         `✅ RapidAPI Yahoo: Balance sheet data received for ${yahooSymbol}`, data
       );
 
-      return data?.quoteSummary?.result?.[0] || data;
+      return data;
     } catch (error) {
       console.error(
         `❌ RapidAPI Yahoo balance sheet failed for ${symbol}:`,
@@ -403,26 +372,14 @@ class RapidApiYahooService {
         `📡 RapidAPI Yahoo: Getting cash flow for ${symbol} -> ${yahooSymbol}`
       );
 
-      const response = await fetch(
-        `${this.baseUrl}/stock/get-cashflow?region=IN&lang=en-US&symbol=${yahooSymbol}`,
-        {
-          method: "GET",
-          headers: this.getHeaders(),
-        }
-      );
+      const response = await this.makeRequest(`${this.baseUrl}/stock/get-cashflow?region=IN&lang=en-US&symbol=${yahooSymbol}`);
 
-      if (!response.ok) {
-        throw new Error(
-          `RapidAPI Yahoo Cash Flow returned ${response.status}: ${response.statusText}`
-        );
-      }
-
-      const data = await response.json();
+      const data = response.quoteSummary.result[0];
       console.log(
         `✅ RapidAPI Yahoo: Cash flow data received for ${yahooSymbol}`, data
       );
 
-      return data?.quoteSummary?.result?.[0] || data;
+      return data;
     } catch (error) {
       console.error(
         `❌ RapidAPI Yahoo cash flow failed for ${symbol}:`,
@@ -446,21 +403,9 @@ class RapidApiYahooService {
         `📡 RapidAPI Yahoo: Getting chart data for ${symbol} -> ${yahooSymbol} (${range}, ${interval})`
       );
 
-      const response = await fetch(
-        `${this.baseUrl}/stock/get-chart?symbol=${yahooSymbol}&region=IN&lang=en-US&useYfid=true&includeAdjustedClose=true&events=div%2Csplit%2Cearn&range=${range}&interval=${interval}&includePrePost=false`,
-        {
-          method: "GET",
-          headers: this.getHeaders(),
-        }
-      );
+      const response = await this.makeRequest(`${this.baseUrl}/stock/get-chart?symbol=${yahooSymbol}&region=IN&lang=en-US&useYfid=true&includeAdjustedClose=true&events=div%2Csplit%2Cearn&range=${range}&interval=${interval}&includePrePost=false`);
 
-      if (!response.ok) {
-        throw new Error(
-          `Chart API returned ${response.status}: ${response.statusText}`
-        );
-      }
-
-      const data = await response.json();
+      const data = response;
       console.log(
         `✅ RapidAPI Yahoo: Chart data received for ${yahooSymbol}`, data
       );
@@ -485,26 +430,14 @@ class RapidApiYahooService {
         `📡 RapidAPI Yahoo: Getting summary for ${symbol} -> ${yahooSymbol}`
       );
 
-      const response = await fetch(
-        `${this.baseUrl}/stock/get-summary?lang=en-US&symbol=${yahooSymbol}&region=IN`,
-        {
-          method: "GET",
-          headers: this.getHeaders(),
-        }
-      );
+      const response = await this.makeRequest(`${this.baseUrl}/stock/get-summary?lang=en-US&symbol=${yahooSymbol}&region=IN`);
 
-      if (!response.ok) {
-        throw new Error(
-          `RapidAPI Yahoo Summary returned ${response.status}: ${response.statusText}`
-        );
-      }
-
-      const data = await response.json();
+      const data = response.quoteSummary.result[0];
       console.log(
         `✅ RapidAPI Yahoo: Summary data received for ${yahooSymbol}`, data
       );
 
-      return data?.quoteSummary?.result?.[0] || data;
+      return data;
     } catch (error) {
       console.error(
         `❌ RapidAPI Yahoo summary failed for ${symbol}:`,
@@ -524,26 +457,14 @@ class RapidApiYahooService {
         `📡 RapidAPI Yahoo: Getting profile for ${symbol} -> ${yahooSymbol}`
       );
 
-      const response = await fetch(
-        `${this.baseUrl}/stock/get-profile?region=IN&lang=en-US&symbol=${yahooSymbol}`,
-        {
-          method: "GET",
-          headers: this.getHeaders(),
-        }
-      );
+      const response = await this.makeRequest(`${this.baseUrl}/stock/get-profile?region=IN&lang=en-US&symbol=${yahooSymbol}`);
 
-      if (!response.ok) {
-        throw new Error(
-          `RapidAPI Yahoo Profile returned ${response.status}: ${response.statusText}`
-        );
-      }
-
-      const data = await response.json();
+      const data = response.quoteSummary.result[0].assetProfile;
       console.log(
         `✅ RapidAPI Yahoo: Profile data received for ${yahooSymbol}`, data
       );
 
-      return data?.quoteSummary?.result?.[0]?.assetProfile || data;
+      return data;
     } catch (error) {
       console.error(
         `❌ RapidAPI Yahoo profile failed for ${symbol}:`,
@@ -557,9 +478,9 @@ class RapidApiYahooService {
    * Check if RapidAPI service is available
    */
   isAvailable(): boolean {
-    return !!this.apiKey && 
-           this.apiKey !== "PLEASE_ADD_YOUR_RAPIDAPI_KEY_HERE" && 
-           !this.apiKey.includes("test-key");
+    const isKeyValid = !!this.apiKey && this.apiKey !== 'test-key-for-development-replace-with-real-key';
+    const isNotRateLimited = !this.isRateLimited();
+    return isKeyValid && isNotRateLimited;
   }
 
   /**
