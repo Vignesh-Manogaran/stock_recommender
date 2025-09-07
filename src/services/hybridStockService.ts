@@ -1663,72 +1663,62 @@ export const getRealStockMetrics = async (symbol: string) => {
 
     const { quote, statistics } = enhancedData;
 
+    console.log(`🔍 Quote data structure:`, quote);
+    console.log(`🔍 Statistics data structure:`, statistics);
+
     // Extract only confirmed real metrics from Yahoo Finance API
+    // Using exact field names from the RapidAPI response structure
     const realMetrics = {
-      // Basic price and market data
+      // Basic price and market data - using actual API field names
       currentPrice: quote?.regularMarketPrice || null,
       marketCap: quote?.marketCap || null,
       volume: quote?.regularMarketVolume || null,
 
-      // Price ranges (real 52-week high/low)
+      // Price ranges (real 52-week high/low and daily ranges)
       fiftyTwoWeekHigh: quote?.fiftyTwoWeekHigh || null,
       fiftyTwoWeekLow: quote?.fiftyTwoWeekLow || null,
       regularMarketDayHigh: quote?.regularMarketDayHigh || null,
       regularMarketDayLow: quote?.regularMarketDayLow || null,
 
-      // Valuation ratios
-      peRatio: quote?.trailingPE || statistics?.priceToEarnings || null,
-      pbRatio: quote?.priceToBook || statistics?.priceToBook || null,
-      psRatio: statistics?.priceToSales || null,
-      pegRatio: statistics?.pegRatio || null,
+      // Valuation ratios - using actual API field names
+      peRatio: quote?.trailingPE || null,
+      forwardPE: quote?.forwardPE || null,
+      pbRatio: quote?.priceToBook || null,
+      psRatio: quote?.priceToSales || null,
 
-      // Profitability metrics
-      returnOnEquity: statistics?.returnOnEquity
-        ? statistics.returnOnEquity * 100
-        : null,
-      returnOnAssets: statistics?.returnOnAssets
-        ? statistics.returnOnAssets * 100
-        : null,
-      profitMargins: statistics?.profitMargins
-        ? statistics.profitMargins * 100
-        : null,
-      operatingMargins: statistics?.operatingMargins
-        ? statistics.operatingMargins * 100
-        : null,
-      grossMargins: statistics?.grossMargins
-        ? statistics.grossMargins * 100
-        : null,
-
-      // Dividends
-      dividendYield: quote?.dividendYield ? quote.dividendYield * 100 : null,
-
-      // Financial health
-      currentRatio: statistics?.currentRatio || null,
-      quickRatio: statistics?.quickRatio || null,
-      debtToEquity: statistics?.debtToEquity || null,
-
-      // Company info
+      // Company info - using actual API field names
       companyName: quote?.shortName || quote?.longName || null,
       currency: quote?.currency || "INR",
-      exchange: quote?.fullExchangeName || quote?.exchangeName || null,
+      exchange: quote?.fullExchangeName || quote?.exchange || null,
 
       // Market performance
-      beta: statistics?.beta || null,
+      beta: quote?.beta || null,
 
-      // Enterprise metrics
-      enterpriseValue: statistics?.enterpriseValue || null,
-      ebitda: statistics?.ebitda || null,
+      // Dividends - using actual API field name
+      dividendYield: quote?.trailingAnnualDividendYield || null,
 
-      // Book value (calculated from real P/B ratio)
-      bookValuePerShare:
-        quote?.regularMarketPrice && statistics?.priceToBook
-          ? quote.regularMarketPrice / statistics.priceToBook
-          : null,
+      // Earnings data - using actual API field names
+      earningsPerShare: quote?.epsTrailingTwelveMonths || null,
+      bookValue: quote?.bookValue || null,
 
-      // Additional real metrics
-      earningsPerShare: statistics?.trailingEps || null,
-      forwardPE: statistics?.forwardPE || null,
-      priceToFreeCashflow: statistics?.priceToFreeCashFlow || null,
+      // Market changes and previous close
+      regularMarketChange: quote?.regularMarketChange || null,
+      regularMarketChangePercent: quote?.regularMarketChangePercent || null,
+      regularMarketPreviousClose: quote?.regularMarketPreviousClose || null,
+      regularMarketOpen: quote?.regularMarketOpen || null,
+
+      // Additional real-time metrics available from API
+      averageDailyVolume3Month: quote?.averageDailyVolume3Month || null,
+      averageDailyVolume10Day: quote?.averageDailyVolume10Day || null,
+      fiftyDayAverage: quote?.fiftyDayAverage || null,
+      twoHundredDayAverage: quote?.twoHundredDayAverage || null,
+
+      // Financial metrics from statistics (if available)
+      totalCash: quote?.totalCash || null,
+      ebitda: quote?.ebitda || null,
+      revenue: quote?.revenue || null,
+      floatShares: quote?.floatShares || null,
+      sharesOutstanding: quote?.sharesOutstanding || null,
     };
 
     // Filter out null values to return only metrics with real data
