@@ -105,7 +105,7 @@ const TechnicalAnalysisTab: React.FC<TechnicalAnalysisTabProps> = ({
             <span className="text-sm text-gray-600">Current Value</span>
             <div className="flex items-center space-x-2">
               <span className="text-xl font-bold text-gray-900">
-                {(indicator?.value || 0).toFixed(2)}
+                {(indicator?.value || 0)?.toFixed(2) || "0.00"}
               </span>
               <span
                 className={`text-xs px-2 py-1 rounded-full font-medium ${getHealthColor(
@@ -194,8 +194,8 @@ const TechnicalAnalysisTab: React.FC<TechnicalAnalysisTabProps> = ({
                 onClick={(e) => {
                   e.stopPropagation();
                   const ratio = (
-                    (indicator.targetPrice - indicator.buyPrice) /
-                    (indicator.buyPrice - indicator.stopLoss)
+                    ((indicator.targetPrice || 0) - (indicator.buyPrice || 0)) /
+                    ((indicator.buyPrice || 0) - (indicator.stopLoss || 0))
                   ).toFixed(1);
                   handleIndicatorClick("Risk Reward Ratio", `1:${ratio}`, {
                     entry: indicator.buyPrice,
@@ -211,8 +211,8 @@ const TechnicalAnalysisTab: React.FC<TechnicalAnalysisTabProps> = ({
                 <span className="text-sm font-bold text-indigo-700">
                   1:
                   {(
-                    (indicator.targetPrice - indicator.buyPrice) /
-                    (indicator.buyPrice - indicator.stopLoss)
+                    ((indicator.targetPrice || 0) - (indicator.buyPrice || 0)) /
+                    ((indicator.buyPrice || 0) - (indicator.stopLoss || 0))
                   ).toFixed(1)}
                 </span>
               </div>

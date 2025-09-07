@@ -310,6 +310,10 @@ class RapidApiYahooService {
       } else if (response?.body?.quoteSummary?.result?.[0]) {
         financialData = response.body.quoteSummary.result[0];
         console.log(`📊 Found financials in: body.quoteSummary.result[0]`);
+      } else if (response) {
+        // The response itself contains financial data
+        financialData = response;
+        console.log(`📊 Found financial data in root response`);
       } else {
         console.log(`⚠️ No financial data found in expected location`);
         console.log(`🔍 Available keys:`, Object.keys(response || {}));
@@ -380,6 +384,14 @@ class RapidApiYahooService {
       } else if (response?.body?.quoteSummary?.result?.[0]) {
         statisticsData = response.body.quoteSummary.result[0];
         console.log(`📊 Found statistics in: body.quoteSummary.result[0]`);
+      } else if (response?.defaultKeyStatistics) {
+        // Extract defaultKeyStatistics directly
+        statisticsData = response;
+        console.log(`📊 Found statistics in root response with defaultKeyStatistics`);
+      } else if (response) {
+        // The response itself contains the statistics data
+        statisticsData = response;
+        console.log(`📊 Found statistics data in root response`);
       } else {
         console.log(`⚠️ No statistics data found in expected location`);
         console.log(`🔍 Available keys:`, Object.keys(response || {}));
@@ -508,6 +520,10 @@ class RapidApiYahooService {
       } else if (response?.body?.quoteSummary?.result?.[0]) {
         summaryData = response.body.quoteSummary.result[0];
         console.log(`📊 Found summary in: body.quoteSummary.result[0]`);
+      } else if (response) {
+        // The response itself contains the summary data structure
+        summaryData = response;
+        console.log(`📊 Found summary data in root response`);
       } else {
         console.log(`⚠️ No summary data found in expected location`);
         console.log(`🔍 Available keys:`, Object.keys(response || {}));
@@ -550,9 +566,17 @@ class RapidApiYahooService {
       } else if (response?.body?.quoteSummary?.result?.[0]?.assetProfile) {
         profileData = response.body.quoteSummary.result[0].assetProfile;
         console.log(`📊 Found profile in: body.quoteSummary.result[0].assetProfile`);
+      } else if (response?.summaryProfile) {
+        // Extract summaryProfile directly
+        profileData = response.summaryProfile;
+        console.log(`📊 Found profile in: summaryProfile`);
       } else if (response?.quoteSummary?.result?.[0]) {
         profileData = response.quoteSummary.result[0];
         console.log(`📊 Found profile data in: quoteSummary.result[0]`);
+      } else if (response) {
+        // The response itself contains profile data
+        profileData = response;
+        console.log(`📊 Found profile data in root response`);
       } else {
         console.log(`⚠️ No profile data found in expected location`);
         console.log(`🔍 Available keys:`, Object.keys(response || {}));

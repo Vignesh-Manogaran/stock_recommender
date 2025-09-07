@@ -296,14 +296,14 @@ const TechnicalModal: React.FC<TechnicalModalProps> = ({
 
   function getSupportInterpretation(level: number): string {
     const currentPrice = 2474; // This should come from props
-    const distance = (((currentPrice - level) / level) * 100).toFixed(1);
-    return `Support level ₹${level.toLocaleString()}. Current price இலிருந்து ${distance}% distance. Strong support zone.`;
+    const distance = (((currentPrice - level) / level) * 100) || 0;
+    return `Support level ₹${level.toLocaleString()}. Current price இலிருந்து ${distance.toFixed(1)}% distance. Strong support zone.`;
   }
 
   function getResistanceInterpretation(level: number): string {
     const currentPrice = 2474; // This should come from props
-    const distance = (((level - currentPrice) / currentPrice) * 100).toFixed(1);
-    return `Resistance level ₹${level.toLocaleString()}. Current price இலிருந்து ${distance}% மேலே. Strong selling zone.`;
+    const distance = (((level - currentPrice) / currentPrice) * 100) || 0;
+    return `Resistance level ₹${level.toLocaleString()}. Current price இலிருந்து ${distance.toFixed(1)}% மேலே. Strong selling zone.`;
   }
 
   function getRiskRewardInterpretation(ratio: string): string {

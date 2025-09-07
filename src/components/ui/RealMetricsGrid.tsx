@@ -73,40 +73,33 @@ const RealMetricsGrid: React.FC<RealMetricsGridProps> = ({
 
     const value = metric.value;
     
+    if (!value && value !== 0) return 'N/A';
+    
+    // Format currency values
+    if (key.includes('Price') || key.includes('Value') || key.includes('Cap')) {
+      if (value > 10000000000) {
+        return `₹${((value || 0) / 10000000000).toFixed(1)}B`;
+      } else if (value > 10000000) {
+        return `₹${((value || 0) / 10000000).toFixed(0)}Cr`;
+      } else if (value > 100000) {
+        return `₹${((value || 0) / 100000).toFixed(1)}L`;
+      } else {
+        return `₹${(value || 0).toLocaleString("en-IN")}`;
+      }
+    }
+    
     // Format percentage values
     if (key.includes('Margin') || key.includes('ROE') || key.includes('ROA') || key.includes('ROCE') || key.includes('Growth') || key.includes('Yield')) {
-      return `${value.toFixed(1)}%`;
+      return `${(value || 0).toFixed(1)}%`;
     }
     
     // Format ratio values
     if (key.includes('Ratio') || key.includes('Coverage')) {
-      return value.toFixed(2);
+      return (value || 0).toFixed(2);
     }
     
     // Default formatting
-    return value.toFixed(1);
-  };
-  // Format currency values
-  const formatCurrency = (value: number): string => {
-    if (value > 10000000000) {
-      return `₹${(value / 10000000000).toFixed(1)}B`;
-    } else if (value > 10000000) {
-      return `₹${(value / 10000000).toFixed(0)}Cr`;
-    } else if (value > 100000) {
-      return `₹${(value / 100000).toFixed(1)}L`;
-    } else {
-      return `₹${value.toLocaleString("en-IN")}`;
-    }
-  };
-
-  // Format percentage values
-  const formatPercent = (value: number): string => {
-    return `${value.toFixed(1)}%`;
-  };
-
-  // Format ratio values
-  const formatRatio = (value: number): string => {
-    return value.toFixed(2);
+    return (value || 0).toFixed(1);
   };
 
   // If no metrics available, show message
