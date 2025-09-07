@@ -1726,6 +1726,16 @@ export const getRealStockMetrics = async (symbol: string) => {
       Object.entries(realMetrics).filter(([_, value]) => value !== null)
     );
 
+    // Convert raw metric values to MetricWithSource format expected by RealMetricsGrid
+    const metricsWithSource: Record<string, MetricWithSource> = {};
+    Object.entries(filteredMetrics).forEach(([key, value]) => {
+      metricsWithSource[key] = {
+        value: value as number,
+        dataSource: DataSource.RAPID_API_YAHOO,
+        health: HealthStatus.GOOD // All real API data is considered good health
+      };
+    });
+
     console.log(
       `✅ Real metrics available for ${symbol}:`,
       Object.keys(filteredMetrics)
@@ -1733,7 +1743,7 @@ export const getRealStockMetrics = async (symbol: string) => {
 
     return {
       symbol,
-      metrics: filteredMetrics,
+      metrics: metricsWithSource,
       dataSource: DataSource.RAPID_API_YAHOO,
       timestamp: new Date(),
     };
