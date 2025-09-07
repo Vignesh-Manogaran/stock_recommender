@@ -138,10 +138,8 @@ export class HybridStockService {
         );
         console.log(`📋 Converted Analysis:`, {
           symbol: baseAnalysis.symbol,
-          companyName: baseAnalysis.companyName,
+          name: baseAnalysis.name,
           currentPrice: baseAnalysis.currentPrice,
-          change: baseAnalysis.change,
-          changePercent: baseAnalysis.changePercent,
           marketCap: baseAnalysis.marketCap,
         });
 
@@ -158,8 +156,7 @@ export class HybridStockService {
           console.log(`🎯 ===== FINAL RESULT FOR ${symbol} =====`);
           console.log(`📊 Data Source: RapidAPI Yahoo + AI Enhancement`);
           console.log(`💰 Final Price: ₹${finalAnalysis.currentPrice}`);
-          console.log(`🏢 Company: ${finalAnalysis.companyName}`);
-          console.log(`📈 Change: ${finalAnalysis.changePercent}%`);
+          console.log(`🏢 Company: ${finalAnalysis.name}`);
           console.log(`🎯 ===================================`);
           return finalAnalysis;
         } catch (aiError) {
@@ -169,8 +166,7 @@ export class HybridStockService {
           console.log(`🎯 ===== FINAL RESULT FOR ${symbol} =====`);
           console.log(`📊 Data Source: RapidAPI Yahoo Only`);
           console.log(`💰 Final Price: ₹${baseAnalysis.currentPrice}`);
-          console.log(`🏢 Company: ${baseAnalysis.companyName}`);
-          console.log(`📈 Change: ${baseAnalysis.changePercent}%`);
+          console.log(`🏢 Company: ${baseAnalysis.name}`);
           console.log(`🎯 ===================================`);
           return baseAnalysis;
         }
@@ -307,7 +303,8 @@ export class HybridStockService {
           return this.createEnhancedAnalysis(symbol, enhancedData);
         }
       } catch (error) {
-        console.log(`⚠️ Enhanced data fetch failed: ${error.message}`);
+        const msg = error instanceof Error ? error.message : String(error);
+        console.log(`⚠️ Enhanced data fetch failed: ${msg}`);
       }
     }
 
@@ -520,45 +517,51 @@ export class HybridStockService {
           ROE: {
             value: data.roe ? data.roe * 100 : 0,
             health: this.assessROEHealth(data.roe),
+            dataSource: DataSource.YAHOO_FINANCE_API,
           },
           ROA: {
             value: data.roe ? data.roe * 0.7 : 0, // Estimate ROA from ROE
             health: this.assessROEHealth(data.roe ? data.roe * 0.7 : 0),
+            dataSource: DataSource.ESTIMATED,
           },
           ROCE: {
             value: data.roe ? data.roe * 1.1 : 0, // Estimate ROCE
             health: this.assessROEHealth(data.roe ? data.roe * 1.1 : 0),
+            dataSource: DataSource.ESTIMATED,
           },
-          "Gross Margin": { value: 35, health: HealthStatus.GOOD }, // Default estimate
-          "Operating Margin": { value: 20, health: HealthStatus.GOOD },
-          "Net Margin": { value: 15, health: HealthStatus.GOOD },
+          "Gross Margin": { value: 35, health: HealthStatus.GOOD, dataSource: DataSource.ESTIMATED }, // Default estimate
+          "Operating Margin": { value: 20, health: HealthStatus.GOOD, dataSource: DataSource.ESTIMATED },
+          "Net Margin": { value: 15, health: HealthStatus.GOOD, dataSource: DataSource.ESTIMATED },
         },
         liquidity: {
-          "Current Ratio": { value: 1.8, health: HealthStatus.GOOD },
-          "Quick Ratio": { value: 1.5, health: HealthStatus.GOOD },
-          "Debt-to-Equity": { value: 0.3, health: HealthStatus.BEST },
-          "Interest Coverage": { value: 8, health: HealthStatus.BEST },
+          "Current Ratio": { value: 1.8, health: HealthStatus.GOOD, dataSource: DataSource.ESTIMATED },
+          "Quick Ratio": { value: 1.5, health: HealthStatus.GOOD, dataSource: DataSource.ESTIMATED },
+          "Debt-to-Equity": { value: 0.3, health: HealthStatus.BEST, dataSource: DataSource.ESTIMATED },
+          "Interest Coverage": { value: 8, health: HealthStatus.BEST, dataSource: DataSource.ESTIMATED },
         },
         valuation: {
           "P/E Ratio": {
             value: data.peRatio || 0,
             health: this.assessPEHealth(data.peRatio),
+            dataSource: DataSource.YAHOO_FINANCE_API,
           },
           "P/B Ratio": {
             value: data.bookValue ? data.currentPrice / data.bookValue : 0,
             health: HealthStatus.NORMAL,
+            dataSource: DataSource.CALCULATED,
           },
-          "P/S Ratio": { value: 5, health: HealthStatus.NORMAL },
-          "EV/EBITDA": { value: 15, health: HealthStatus.NORMAL },
+          "P/S Ratio": { value: 5, health: HealthStatus.NORMAL, dataSource: DataSource.ESTIMATED },
+          "EV/EBITDA": { value: 15, health: HealthStatus.NORMAL, dataSource: DataSource.ESTIMATED },
           "Dividend Yield": {
             value: data.dividendYield ? data.dividendYield * 100 : 0,
             health: this.assessDividendHealth(data.dividendYield),
+            dataSource: DataSource.YAHOO_FINANCE_API,
           },
         },
         growth: {
-          "Revenue CAGR (3Y)": { value: 15, health: HealthStatus.GOOD },
-          "EPS Growth (3Y)": { value: 18, health: HealthStatus.GOOD },
-          "Market Share Growth": { value: 12, health: HealthStatus.GOOD },
+          "Revenue CAGR (3Y)": { value: 15, health: HealthStatus.GOOD, dataSource: DataSource.ESTIMATED },
+          "EPS Growth (3Y)": { value: 18, health: HealthStatus.GOOD, dataSource: DataSource.ESTIMATED },
+          "Market Share Growth": { value: 12, health: HealthStatus.GOOD, dataSource: DataSource.ESTIMATED },
         },
         management: HealthStatus.GOOD,
         industry: HealthStatus.GOOD,
@@ -663,33 +666,34 @@ export class HybridStockService {
           cashFlow: HealthStatus.GOOD,
         },
         profitability: {
-          ROE: { value: 15, health: HealthStatus.GOOD },
-          ROA: { value: 10, health: HealthStatus.GOOD },
-          ROCE: { value: 18, health: HealthStatus.GOOD },
-          "Gross Margin": { value: 35, health: HealthStatus.GOOD },
-          "Operating Margin": { value: 20, health: HealthStatus.GOOD },
-          "Net Margin": { value: 15, health: HealthStatus.GOOD },
+          ROE: { value: 15, health: HealthStatus.GOOD, dataSource: DataSource.ESTIMATED },
+          ROA: { value: 10, health: HealthStatus.GOOD, dataSource: DataSource.ESTIMATED },
+          ROCE: { value: 18, health: HealthStatus.GOOD, dataSource: DataSource.ESTIMATED },
+          "Gross Margin": { value: 35, health: HealthStatus.GOOD, dataSource: DataSource.ESTIMATED },
+          "Operating Margin": { value: 20, health: HealthStatus.GOOD, dataSource: DataSource.ESTIMATED },
+          "Net Margin": { value: 15, health: HealthStatus.GOOD, dataSource: DataSource.ESTIMATED },
         },
         liquidity: {
-          "Current Ratio": { value: 1.8, health: HealthStatus.GOOD },
-          "Quick Ratio": { value: 1.5, health: HealthStatus.GOOD },
-          "Debt-to-Equity": { value: 0.3, health: HealthStatus.BEST },
-          "Interest Coverage": { value: 8, health: HealthStatus.BEST },
+          "Current Ratio": { value: 1.8, health: HealthStatus.GOOD, dataSource: DataSource.ESTIMATED },
+          "Quick Ratio": { value: 1.5, health: HealthStatus.GOOD, dataSource: DataSource.ESTIMATED },
+          "Debt-to-Equity": { value: 0.3, health: HealthStatus.BEST, dataSource: DataSource.ESTIMATED },
+          "Interest Coverage": { value: 8, health: HealthStatus.BEST, dataSource: DataSource.ESTIMATED },
         },
         valuation: {
           "P/E Ratio": {
             value: data.peRatio || 0,
             health: this.assessPEHealth(data.peRatio),
+            dataSource: DataSource.ESTIMATED,
           },
-          "P/B Ratio": { value: 2.5, health: HealthStatus.NORMAL },
-          "P/S Ratio": { value: 5, health: HealthStatus.NORMAL },
-          "EV/EBITDA": { value: 15, health: HealthStatus.NORMAL },
-          "Dividend Yield": { value: 2, health: HealthStatus.NORMAL },
+          "P/B Ratio": { value: 2.5, health: HealthStatus.NORMAL, dataSource: DataSource.ESTIMATED },
+          "P/S Ratio": { value: 5, health: HealthStatus.NORMAL, dataSource: DataSource.ESTIMATED },
+          "EV/EBITDA": { value: 15, health: HealthStatus.NORMAL, dataSource: DataSource.ESTIMATED },
+          "Dividend Yield": { value: 2, health: HealthStatus.NORMAL, dataSource: DataSource.ESTIMATED },
         },
         growth: {
-          "Revenue CAGR (3Y)": { value: 15, health: HealthStatus.GOOD },
-          "EPS Growth (3Y)": { value: 18, health: HealthStatus.GOOD },
-          "Market Share Growth": { value: 12, health: HealthStatus.GOOD },
+          "Revenue CAGR (3Y)": { value: 15, health: HealthStatus.GOOD, dataSource: DataSource.ESTIMATED },
+          "EPS Growth (3Y)": { value: 18, health: HealthStatus.GOOD, dataSource: DataSource.ESTIMATED },
+          "Market Share Growth": { value: 12, health: HealthStatus.GOOD, dataSource: DataSource.ESTIMATED },
         },
         management: HealthStatus.GOOD,
         industry: HealthStatus.GOOD,
@@ -954,7 +958,9 @@ export class HybridStockService {
     // Priority: summary > quote > statistics
     const summaryData = summary?.summaryDetail || summary;
     const quoteData = quote || summaryData;
-    const statsData = statistics?.defaultKeyStatistics || statistics;
+    const statsObj = statistics || {};
+    const keyStats = statsObj?.defaultKeyStatistics || {};
+    const finData = statsObj?.financialData || {};
     const profileData = profile?.assetProfile || profile;
 
     // Extract real data or mark as null for N/A display
@@ -966,17 +972,20 @@ export class HybridStockService {
     const marketCap =
       summaryData?.marketCap?.raw ||
       quoteData?.marketCap ||
-      statsData?.marketCap?.raw ||
+      keyStats?.marketCap?.raw ||
+      finData?.marketCap?.raw ||
       null;
     const peRatio =
       summaryData?.trailingPE?.raw ||
       quoteData?.trailingPE ||
-      statsData?.trailingPE?.raw ||
+      keyStats?.trailingPE?.raw ||
+      finData?.trailingPE?.raw ||
       null;
     const pbRatio =
       summaryData?.priceToBook?.raw ||
       quoteData?.priceToBook ||
-      statsData?.priceToBook?.raw ||
+      keyStats?.priceToBook?.raw ||
+      finData?.priceToBook?.raw ||
       null;
 
     // Company info from profile
@@ -1030,49 +1039,61 @@ export class HybridStockService {
     // Create profitability metrics with real data sources - no mock fallbacks
     const profitability: Record<string, MetricWithSource> = {
       ROE: this.createMetricWithNA(
-        statsData?.returnOnEquity?.raw
-          ? statsData.returnOnEquity.raw * 100
+        (keyStats?.returnOnEquity?.raw ?? finData?.returnOnEquity?.raw ?? null) !== null
+          ? (keyStats?.returnOnEquity?.raw ?? finData?.returnOnEquity?.raw) * 100
           : null,
-        statsData?.returnOnEquity?.raw ? DataSource.RAPID_API_YAHOO : null
+        keyStats?.returnOnEquity?.raw || finData?.returnOnEquity?.raw
+          ? DataSource.RAPID_API_YAHOO
+          : null
       ),
       ROA: this.createMetricWithNA(
-        statsData?.returnOnAssets?.raw
-          ? statsData.returnOnAssets.raw * 100
+        (keyStats?.returnOnAssets?.raw ?? finData?.returnOnAssets?.raw ?? null) !== null
+          ? (keyStats?.returnOnAssets?.raw ?? finData?.returnOnAssets?.raw) * 100
           : null,
-        statsData?.returnOnAssets?.raw ? DataSource.RAPID_API_YAHOO : null
+        keyStats?.returnOnAssets?.raw || finData?.returnOnAssets?.raw
+          ? DataSource.RAPID_API_YAHOO
+          : null
       ),
       ROCE: this.createMetricWithNA(
-        null, // Not typically available in Yahoo Finance
+        null, // Not typically available directly in Yahoo Finance
         null
       ),
       "Gross Margin": this.createMetricWithNA(
-        statsData?.grossMargins?.raw ? statsData.grossMargins.raw * 100 : null,
-        statsData?.grossMargins?.raw ? DataSource.RAPID_API_YAHOO : null
+        (finData?.grossMargins?.raw ?? keyStats?.grossMargins?.raw ?? null) !== null
+          ? (finData?.grossMargins?.raw ?? keyStats?.grossMargins?.raw) * 100
+          : null,
+        finData?.grossMargins?.raw || keyStats?.grossMargins?.raw
+          ? DataSource.RAPID_API_YAHOO
+          : null
       ),
       "Operating Margin": this.createMetricWithNA(
-        statsData?.operatingMargins?.raw
-          ? statsData.operatingMargins.raw * 100
+        (finData?.operatingMargins?.raw ?? keyStats?.operatingMargins?.raw ?? null) !== null
+          ? (finData?.operatingMargins?.raw ?? keyStats?.operatingMargins?.raw) * 100
           : null,
-        statsData?.operatingMargins?.raw ? DataSource.RAPID_API_YAHOO : null
+        finData?.operatingMargins?.raw || keyStats?.operatingMargins?.raw
+          ? DataSource.RAPID_API_YAHOO
+          : null
       ),
       "Net Margin": this.createMetricWithNA(
-        statsData?.profitMargins?.raw
-          ? statsData.profitMargins.raw * 100
+        (finData?.profitMargins?.raw ?? keyStats?.profitMargins?.raw ?? null) !== null
+          ? (finData?.profitMargins?.raw ?? keyStats?.profitMargins?.raw) * 100
           : null,
-        statsData?.profitMargins?.raw ? DataSource.RAPID_API_YAHOO : null
+        finData?.profitMargins?.raw || keyStats?.profitMargins?.raw
+          ? DataSource.RAPID_API_YAHOO
+          : null
       ),
     };
 
     // Create liquidity metrics with real data sources - no mock fallbacks
     const liquidity: Record<string, MetricWithSource> = {
       "Current Ratio": this.createMetricWithNA(
-        statsData?.currentRatio?.raw ||
+        finData?.currentRatio?.raw || keyStats?.currentRatio?.raw ||
           (balanceSheet?.totalCurrentAssets &&
           balanceSheet?.totalCurrentLiabilities
             ? balanceSheet.totalCurrentAssets /
               balanceSheet.totalCurrentLiabilities
             : null),
-        statsData?.currentRatio?.raw
+        finData?.currentRatio?.raw || keyStats?.currentRatio?.raw
           ? DataSource.RAPID_API_YAHOO
           : balanceSheet?.totalCurrentAssets &&
             balanceSheet?.totalCurrentLiabilities
@@ -1080,15 +1101,15 @@ export class HybridStockService {
           : null
       ),
       "Quick Ratio": this.createMetricWithNA(
-        statsData?.quickRatio?.raw || null,
-        statsData?.quickRatio?.raw ? DataSource.RAPID_API_YAHOO : null
+        finData?.quickRatio?.raw || keyStats?.quickRatio?.raw || null,
+        finData?.quickRatio?.raw || keyStats?.quickRatio?.raw ? DataSource.RAPID_API_YAHOO : null
       ),
       "Debt-to-Equity": this.createMetricWithNA(
-        statsData?.debtToEquity?.raw ||
+        keyStats?.debtToEquity?.raw || finData?.debtToEquity?.raw ||
           (balanceSheet?.totalDebt && balanceSheet?.shareholderEquity
             ? balanceSheet.totalDebt / balanceSheet.shareholderEquity
             : null),
-        statsData?.debtToEquity?.raw
+        keyStats?.debtToEquity?.raw || finData?.debtToEquity?.raw
           ? DataSource.RAPID_API_YAHOO
           : balanceSheet?.totalDebt && balanceSheet?.shareholderEquity
           ? DataSource.RAPID_API_YAHOO
@@ -1116,16 +1137,16 @@ export class HybridStockService {
         pbRatio ? DataSource.RAPID_API_YAHOO : null
       ),
       "P/S Ratio": this.createMetricWithNA(
-        statsData?.priceToSalesTrailing12Months?.raw || null,
-        statsData?.priceToSalesTrailing12Months?.raw
+        keyStats?.priceToSalesTrailing12Months?.raw || finData?.priceToSalesTrailing12Months?.raw || null,
+        keyStats?.priceToSalesTrailing12Months?.raw || finData?.priceToSalesTrailing12Months?.raw
           ? DataSource.RAPID_API_YAHOO
           : null
       ),
       "EV/EBITDA": this.createMetricWithNA(
-        statsData?.enterpriseValue?.raw && statsData?.ebitda?.raw
-          ? statsData.enterpriseValue.raw / statsData.ebitda.raw
+        (keyStats?.enterpriseValue?.raw || finData?.enterpriseValue?.raw) && (finData?.ebitda?.raw || keyStats?.ebitda?.raw)
+          ? (keyStats?.enterpriseValue?.raw ?? finData?.enterpriseValue?.raw) / (finData?.ebitda?.raw ?? keyStats?.ebitda?.raw)
           : null,
-        statsData?.enterpriseValue?.raw && statsData?.ebitda?.raw
+        (keyStats?.enterpriseValue?.raw || finData?.enterpriseValue?.raw) && (finData?.ebitda?.raw || keyStats?.ebitda?.raw)
           ? DataSource.RAPID_API_YAHOO
           : null
       ),
@@ -1434,16 +1455,8 @@ export class HybridStockService {
     return {
       symbol: quote.symbol || "UNKNOWN",
       name: quote.shortName || quote.longName || "Unknown Company", // UI expects 'name'
-      companyName: quote.shortName || quote.longName || "Unknown Company", // Keep for compatibility
       currentPrice: currentPrice,
-      change: quote.regularMarketChange || 0,
-      changePercent: quote.regularMarketChangePercent || 0,
       marketCap: quote.marketCap || 0,
-      peRatio: quote.trailingPE || 25.5,
-      pbRatio: quote.priceToBook || 2.7,
-      roe: 18.4,
-      roce: 25.3,
-      dividendYield: quote.dividendYield || 2.7,
       sector: "Technology",
       lastUpdated: new Date(), // UI expects lastUpdated
       about:
@@ -1454,26 +1467,6 @@ export class HybridStockService {
         "Solid financial performance",
         "Good dividend track record",
       ],
-      importantStats: {
-        marketCap: { value: quote.marketCap || 0, health: HealthStatus.GOOD },
-        peRatio: {
-          value: quote.trailingPE || 25.5,
-          health: HealthStatus.NORMAL,
-        },
-        pbRatio: { value: quote.priceToBook || 2.7, health: HealthStatus.GOOD },
-        roe: { value: 18.4, health: HealthStatus.GOOD },
-        roce: { value: 25.3, health: HealthStatus.BEST },
-        dividendYield: {
-          value: quote.dividendYield || 2.7,
-          health: HealthStatus.GOOD,
-        },
-        currentRatio: { value: 1.8, health: HealthStatus.GOOD },
-        debtToEquity: { value: 0.3, health: HealthStatus.BEST },
-        bookValue: { value: 308, health: HealthStatus.GOOD },
-        faceValue: { value: 1.0, health: HealthStatus.NORMAL },
-        eps: { value: 12.73, health: HealthStatus.GOOD },
-        sales: { value: 50000, health: HealthStatus.GOOD },
-      },
       priceHistory: [],
       // Add financialHealth structure that the UI expects
       financialHealth: {
@@ -1483,93 +1476,47 @@ export class HybridStockService {
           cashFlow: HealthStatus.GOOD,
         },
         profitability: {
-          ROE: { value: 18.4, health: HealthStatus.GOOD },
-          ROA: { value: 12.5, health: HealthStatus.GOOD },
-          ROCE: { value: 25.3, health: HealthStatus.BEST },
-          "Gross Margin": { value: 35.2, health: HealthStatus.GOOD },
-          "Operating Margin": { value: 22.1, health: HealthStatus.GOOD },
-          "Net Margin": { value: 18.5, health: HealthStatus.GOOD },
+          ROE: { value: 18.4, health: HealthStatus.GOOD, dataSource: DataSource.ESTIMATED },
+          ROA: { value: 12.5, health: HealthStatus.GOOD, dataSource: DataSource.ESTIMATED },
+          ROCE: { value: 25.3, health: HealthStatus.BEST, dataSource: DataSource.ESTIMATED },
+          "Gross Margin": { value: 35.2, health: HealthStatus.GOOD, dataSource: DataSource.ESTIMATED },
+          "Operating Margin": { value: 22.1, health: HealthStatus.GOOD, dataSource: DataSource.ESTIMATED },
+          "Net Margin": { value: 18.5, health: HealthStatus.GOOD, dataSource: DataSource.ESTIMATED },
         },
         liquidity: {
-          "Current Ratio": { value: 1.8, health: HealthStatus.GOOD },
-          "Quick Ratio": { value: 1.5, health: HealthStatus.GOOD },
-          "Debt-to-Equity Ratio": { value: 0.2, health: HealthStatus.BEST },
-          "Interest Coverage Ratio": { value: 15.3, health: HealthStatus.BEST },
+          "Current Ratio": { value: 1.8, health: HealthStatus.GOOD, dataSource: DataSource.ESTIMATED },
+          "Quick Ratio": { value: 1.5, health: HealthStatus.GOOD, dataSource: DataSource.ESTIMATED },
+          "Debt-to-Equity Ratio": { value: 0.2, health: HealthStatus.BEST, dataSource: DataSource.ESTIMATED },
+          "Interest Coverage Ratio": { value: 15.3, health: HealthStatus.BEST, dataSource: DataSource.ESTIMATED },
         },
         valuation: {
           "P/E Ratio": {
             value: quote.trailingPE || 25.5,
             health: HealthStatus.NORMAL,
+            dataSource: DataSource.RAPID_API_YAHOO,
           },
           "P/B Ratio": {
             value: quote.priceToBook || 2.7,
             health: HealthStatus.GOOD,
+            dataSource: DataSource.RAPID_API_YAHOO,
           },
-          "Price-to-Sales (P/S)": { value: 4.2, health: HealthStatus.NORMAL },
+          "Price-to-Sales (P/S)": { value: 4.2, health: HealthStatus.NORMAL, dataSource: DataSource.ESTIMATED },
           "Enterprise Value to EBITDA": {
             value: 18.5,
             health: HealthStatus.NORMAL,
+            dataSource: DataSource.ESTIMATED,
           },
           "Dividend Yield": {
             value: quote.dividendYield || 2.1,
             health: HealthStatus.GOOD,
+            dataSource: DataSource.RAPID_API_YAHOO,
           },
         },
         growth: {
-          "Revenue Growth (CAGR)": { value: 16.9, health: HealthStatus.GOOD },
-          "EPS Growth": { value: 12.3, health: HealthStatus.GOOD },
-          "Market Share Trends": { value: 85, health: HealthStatus.BEST },
-          "Expansion Plans": { value: 75, health: HealthStatus.GOOD },
-        },
-        management: HealthStatus.GOOD,
-        industry: HealthStatus.GOOD,
-        risks: HealthStatus.NORMAL,
-        outlook: HealthStatus.GOOD,
-      },
-      fundamentalAnalysis: {
-        statements: {
-          incomeStatement: HealthStatus.GOOD,
-          balanceSheet: HealthStatus.GOOD,
-          cashFlow: HealthStatus.GOOD,
-        },
-        profitability: {
-          ROE: { value: 18.4, health: HealthStatus.GOOD },
-          ROA: { value: 12.5, health: HealthStatus.GOOD },
-          ROCE: { value: 25.3, health: HealthStatus.BEST },
-          "Gross Margin": { value: 35.2, health: HealthStatus.GOOD },
-          "Operating Margin": { value: 22.1, health: HealthStatus.GOOD },
-          "Net Margin": { value: 18.5, health: HealthStatus.GOOD },
-        },
-        liquidity: {
-          "Current Ratio": { value: 1.8, health: HealthStatus.GOOD },
-          "Quick Ratio": { value: 1.5, health: HealthStatus.GOOD },
-          "Debt-to-Equity Ratio": { value: 0.2, health: HealthStatus.BEST },
-          "Interest Coverage Ratio": { value: 15.3, health: HealthStatus.BEST },
-        },
-        valuation: {
-          "Price-to-Earnings (P/E)": {
-            value: quote.trailingPE || 25.5,
-            health: HealthStatus.NORMAL,
-          },
-          "Price-to-Book (P/B)": {
-            value: quote.priceToBook || 2.7,
-            health: HealthStatus.GOOD,
-          },
-          "Price-to-Sales (P/S)": { value: 4.2, health: HealthStatus.NORMAL },
-          "Enterprise Value to EBITDA": {
-            value: 18.5,
-            health: HealthStatus.NORMAL,
-          },
-          "Dividend Yield": {
-            value: quote.dividendYield || 2.1,
-            health: HealthStatus.GOOD,
-          },
-        },
-        growth: {
-          "Revenue Growth (CAGR)": { value: 16.9, health: HealthStatus.GOOD },
-          "EPS Growth": { value: 12.3, health: HealthStatus.GOOD },
-          "Market Share Trends": { value: 85, health: HealthStatus.BEST },
-          "Expansion Plans": { value: 75, health: HealthStatus.GOOD },
+          "Revenue Growth (CAGR)": { value: 16.9, health: HealthStatus.GOOD, dataSource: DataSource.ESTIMATED },
+          "EPS Growth": { value: 12.3, health: HealthStatus.GOOD, dataSource: DataSource.ESTIMATED },
+          "Market Share Trends": { value: 85, health: HealthStatus.BEST, dataSource: DataSource.ESTIMATED },
+          "Expansion Plans": { value: 75, health: HealthStatus.GOOD, dataSource: DataSource.ESTIMATED },
         },
         management: HealthStatus.GOOD,
         industry: HealthStatus.GOOD,
@@ -1578,34 +1525,30 @@ export class HybridStockService {
       },
       // Add technicalIndicators (what UI expects)
       technicalIndicators: {
-        stochasticRSI: {
-          value: 65,
-          signal: SignalType.BUY,
-          health: HealthStatus.GOOD,
-          target: currentPrice * 1.08,
-          stopLoss: currentPrice * 0.95,
-        },
-        connorsRSI: {
-          value: 72,
-          signal: SignalType.SELL,
-          health: HealthStatus.NORMAL,
-          target: currentPrice * 0.97,
-          stopLoss: currentPrice * 1.03,
-        },
-        macd: {
-          value: 1.2,
-          signal: SignalType.BUY,
-          health: HealthStatus.GOOD,
-          target: currentPrice * 1.05,
-          stopLoss: currentPrice * 0.97,
-        },
-        patterns: {
-          value: "Bullish",
-          signal: SignalType.BUY,
-          health: HealthStatus.GOOD,
-          target: currentPrice * 1.12,
-          stopLoss: currentPrice * 0.92,
-        },
+        stochasticRSI: this.generateTechnicalIndicator(
+          "Stochastic RSI",
+          currentPrice,
+          currentPrice * 1.2,
+          currentPrice * 0.8
+        ),
+        connorsRSI: this.generateTechnicalIndicator(
+          "Connors RSI",
+          currentPrice,
+          currentPrice * 1.2,
+          currentPrice * 0.8
+        ),
+        macd: this.generateTechnicalIndicator(
+          "MACD",
+          currentPrice,
+          currentPrice * 1.2,
+          currentPrice * 0.8
+        ),
+        patterns: this.generateTechnicalIndicator(
+          "Pattern Analysis",
+          currentPrice,
+          currentPrice * 1.2,
+          currentPrice * 0.8
+        ),
         support: [
           currentPrice * 0.95,
           currentPrice * 0.92,
@@ -1623,28 +1566,28 @@ export class HybridStockService {
           value: 65,
           signal: SignalType.BUY,
           health: HealthStatus.GOOD,
-          target: currentPrice * 1.08,
+          targetPrice: currentPrice * 1.08,
           stopLoss: currentPrice * 0.95,
         },
         connorsRSI: {
           value: 72,
           signal: SignalType.SELL,
           health: HealthStatus.NORMAL,
-          target: currentPrice * 0.97,
+          targetPrice: currentPrice * 0.97,
           stopLoss: currentPrice * 1.03,
         },
         macd: {
           value: 1.2,
           signal: SignalType.BUY,
           health: HealthStatus.GOOD,
-          target: currentPrice * 1.05,
+          targetPrice: currentPrice * 1.05,
           stopLoss: currentPrice * 0.97,
         },
         patterns: {
-          value: "Bullish",
+          value: 60,
           signal: SignalType.BUY,
           health: HealthStatus.GOOD,
-          target: currentPrice * 1.12,
+          targetPrice: currentPrice * 1.12,
           stopLoss: currentPrice * 0.92,
         },
         support: [
@@ -1840,8 +1783,7 @@ export const checkDataSource = async (symbol: string = "TCS") => {
     const analysis = await service.getComprehensiveAnalysis(symbol);
     console.log(`🎯 SUCCESS! Data retrieved for ${symbol}`);
     console.log(`💰 Price: ₹${analysis.currentPrice}`);
-    console.log(`🏢 Company: ${analysis.companyName}`);
-    console.log(`📈 Change: ${analysis.changePercent}%`);
+    console.log(`🏢 Company: ${analysis.name}`);
     return analysis;
   } catch (error) {
     console.error(`❌ Failed to get data for ${symbol}:`, error);
