@@ -243,11 +243,44 @@ class RapidApiYahooService {
 
       const response = await this.makeRequest(`${this.baseUrl}/market/get-quotes?region=IN&symbols=${yahooSymbol}`);
 
-      const data = response.body;
-      console.log(`✅ RapidAPI Yahoo: Quote data received for ${yahooSymbol}`, data);
-
-      // Extract quote from response
-      return data.quoteSummary.result[0].quote || data.quote || null;
+      console.log(`🔍 Full API Response Structure:`, JSON.stringify(response, null, 2));
+      
+      // Handle different possible response structures
+      let quoteData = null;
+      
+      // Try different response paths
+      if (response?.body?.quoteSummary?.result?.[0]?.quote) {
+        quoteData = response.body.quoteSummary.result[0].quote;
+        console.log(`📊 Found quote in: body.quoteSummary.result[0].quote`);
+      } else if (response?.quoteSummary?.result?.[0]?.quote) {
+        quoteData = response.quoteSummary.result[0].quote;
+        console.log(`📊 Found quote in: quoteSummary.result[0].quote`);
+      } else if (response?.body?.quote) {
+        quoteData = response.body.quote;
+        console.log(`📊 Found quote in: body.quote`);
+      } else if (response?.quote) {
+        quoteData = response.quote;
+        console.log(`📊 Found quote in: quote`);
+      } else if (response?.body?.quoteResponse?.result?.[0]) {
+        quoteData = response.body.quoteResponse.result[0];
+        console.log(`📊 Found quote in: body.quoteResponse.result[0]`);
+      } else if (response?.quoteResponse?.result?.[0]) {
+        quoteData = response.quoteResponse.result[0];
+        console.log(`📊 Found quote in: quoteResponse.result[0]`);
+      } else {
+        console.log(`⚠️ No quote data found in any expected location`);
+        console.log(`🔍 Available keys:`, Object.keys(response || {}));
+        if (response?.body) {
+          console.log(`🔍 Body keys:`, Object.keys(response.body || {}));
+        }
+      }
+      
+      if (quoteData) {
+        console.log(`✅ RapidAPI Yahoo: Quote data extracted for ${yahooSymbol}:`, quoteData);
+        return quoteData;
+      }
+      
+      return null;
     } catch (error) {
       console.error(`❌ RapidAPI Yahoo quote failed for ${symbol}:`, error);
       return null;
@@ -266,12 +299,28 @@ class RapidApiYahooService {
 
       const response = await this.makeRequest(`${this.baseUrl}/stock/get-financials?symbol=${yahooSymbol}&lang=en-US&region=IN`);
 
-      const data = response.quoteSummary.result[0];
-      console.log(
-        `✅ RapidAPI Yahoo: Financials data received for ${yahooSymbol}`, data
-      );
-
-      return data;
+      console.log(`🔍 Financials Response Structure:`, JSON.stringify(response, null, 2));
+      
+      // Handle different possible response structures
+      let financialData = null;
+      
+      if (response?.quoteSummary?.result?.[0]) {
+        financialData = response.quoteSummary.result[0];
+        console.log(`📊 Found financials in: quoteSummary.result[0]`);
+      } else if (response?.body?.quoteSummary?.result?.[0]) {
+        financialData = response.body.quoteSummary.result[0];
+        console.log(`📊 Found financials in: body.quoteSummary.result[0]`);
+      } else {
+        console.log(`⚠️ No financial data found in expected location`);
+        console.log(`🔍 Available keys:`, Object.keys(response || {}));
+      }
+      
+      if (financialData) {
+        console.log(`✅ RapidAPI Yahoo: Financials data extracted for ${yahooSymbol}:`, financialData);
+        return financialData;
+      }
+      
+      return null;
     } catch (error) {
       console.error(
         `❌ RapidAPI Yahoo financials failed for ${symbol}:`,
@@ -320,12 +369,28 @@ class RapidApiYahooService {
 
       const response = await this.makeRequest(`${this.baseUrl}/stock/get-statistics?region=IN&lang=en-US&symbol=${yahooSymbol}`);
 
-      const data = response.quoteSummary.result[0];
-      console.log(
-        `✅ RapidAPI Yahoo: Statistics data received for ${yahooSymbol}`, data
-      );
-
-      return data;
+      console.log(`🔍 Statistics Response Structure:`, JSON.stringify(response, null, 2));
+      
+      // Handle different possible response structures
+      let statisticsData = null;
+      
+      if (response?.quoteSummary?.result?.[0]) {
+        statisticsData = response.quoteSummary.result[0];
+        console.log(`📊 Found statistics in: quoteSummary.result[0]`);
+      } else if (response?.body?.quoteSummary?.result?.[0]) {
+        statisticsData = response.body.quoteSummary.result[0];
+        console.log(`📊 Found statistics in: body.quoteSummary.result[0]`);
+      } else {
+        console.log(`⚠️ No statistics data found in expected location`);
+        console.log(`🔍 Available keys:`, Object.keys(response || {}));
+      }
+      
+      if (statisticsData) {
+        console.log(`✅ RapidAPI Yahoo: Statistics data extracted for ${yahooSymbol}:`, statisticsData);
+        return statisticsData;
+      }
+      
+      return null;
     } catch (error) {
       console.error(
         `❌ RapidAPI Yahoo statistics failed for ${symbol}:`,
@@ -432,23 +497,38 @@ class RapidApiYahooService {
 
       const response = await this.makeRequest(`${this.baseUrl}/stock/get-summary?lang=en-US&symbol=${yahooSymbol}&region=IN`);
 
-      const data = response.quoteSummary.result[0];
-      console.log(
-        `✅ RapidAPI Yahoo: Summary data received for ${yahooSymbol}`, data
-      );
-
-      return data;
+      console.log(`🔍 Summary Response Structure:`, JSON.stringify(response, null, 2));
+      
+      // Handle different possible response structures
+      let summaryData = null;
+      
+      if (response?.quoteSummary?.result?.[0]) {
+        summaryData = response.quoteSummary.result[0];
+        console.log(`📊 Found summary in: quoteSummary.result[0]`);
+      } else if (response?.body?.quoteSummary?.result?.[0]) {
+        summaryData = response.body.quoteSummary.result[0];
+        console.log(`📊 Found summary in: body.quoteSummary.result[0]`);
+      } else {
+        console.log(`⚠️ No summary data found in expected location`);
+        console.log(`🔍 Available keys:`, Object.keys(response || {}));
+      }
+      
+      if (summaryData) {
+        console.log(`✅ RapidAPI Yahoo: Summary data extracted for ${yahooSymbol}:`, summaryData);
+        return summaryData;
+      }
+      
+      return null;
     } catch (error) {
       console.error(
         `❌ RapidAPI Yahoo summary failed for ${symbol}:`,
         error
       );
-      return null;
     }
   }
 
   /**
-   * Get company profile using stock/get-profile
+   * Get company profile data using stock/get-profile
    */
   async getProfile(symbol: string): Promise<any> {
     try {
@@ -459,12 +539,31 @@ class RapidApiYahooService {
 
       const response = await this.makeRequest(`${this.baseUrl}/stock/get-profile?region=IN&lang=en-US&symbol=${yahooSymbol}`);
 
-      const data = response.quoteSummary.result[0].assetProfile;
-      console.log(
-        `✅ RapidAPI Yahoo: Profile data received for ${yahooSymbol}`, data
-      );
-
-      return data;
+      console.log(`🔍 Profile Response Structure:`, JSON.stringify(response, null, 2));
+      
+      // Handle different possible response structures
+      let profileData = null;
+      
+      if (response?.quoteSummary?.result?.[0]?.assetProfile) {
+        profileData = response.quoteSummary.result[0].assetProfile;
+        console.log(`📊 Found profile in: quoteSummary.result[0].assetProfile`);
+      } else if (response?.body?.quoteSummary?.result?.[0]?.assetProfile) {
+        profileData = response.body.quoteSummary.result[0].assetProfile;
+        console.log(`📊 Found profile in: body.quoteSummary.result[0].assetProfile`);
+      } else if (response?.quoteSummary?.result?.[0]) {
+        profileData = response.quoteSummary.result[0];
+        console.log(`📊 Found profile data in: quoteSummary.result[0]`);
+      } else {
+        console.log(`⚠️ No profile data found in expected location`);
+        console.log(`🔍 Available keys:`, Object.keys(response || {}));
+      }
+      
+      if (profileData) {
+        console.log(`✅ RapidAPI Yahoo: Profile data extracted for ${yahooSymbol}:`, profileData);
+        return profileData;
+      }
+      
+      return null;
     } catch (error) {
       console.error(
         `❌ RapidAPI Yahoo profile failed for ${symbol}:`,
