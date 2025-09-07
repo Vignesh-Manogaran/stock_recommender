@@ -495,12 +495,10 @@ export class HybridStockService {
       name: data.name,
       about: `${data.name} is a leading Indian company listed on NSE/BSE. The company has established a strong market position with consistent operational performance and strategic growth initiatives in the Indian market.`,
       keyPoints: [
-        `Current market price: ₹${data.currentPrice.toFixed(2)}`,
-        `Market capitalization: ₹${(data.marketCap / 10000000).toFixed(0)} Cr`,
+        `Current market price: ₹${data.currentPrice ? data.currentPrice.toFixed(2) : 'N/A'}`,
+        `Market capitalization: ₹${data.marketCap ? (data.marketCap / 10000000).toFixed(0) : 'N/A'} Cr`,
         `P/E Ratio: ${data.peRatio ? data.peRatio.toFixed(1) : "N/A"}`,
-        `52-week range: ₹${data.fiftyTwoWeekLow.toFixed(
-          2
-        )} - ₹${data.fiftyTwoWeekHigh.toFixed(2)}`,
+        `52-week range: ₹${data.fiftyTwoWeekLow ? data.fiftyTwoWeekLow.toFixed(2) : 'N/A'} - ₹${data.fiftyTwoWeekHigh ? data.fiftyTwoWeekHigh.toFixed(2) : 'N/A'}`,
         `Book value per share: ₹${
           data.bookValue ? data.bookValue.toFixed(2) : "N/A"
         }`,
@@ -641,15 +639,11 @@ export class HybridStockService {
         data.changePercent >= 0 ? "positive" : "negative"
       } momentum with ${Math.abs(data.changePercent).toFixed(1)}% change.`,
       keyPoints: [
-        `Current market price: ₹${data.currentPrice.toFixed(2)}`,
-        `Price change: ${data.change >= 0 ? "+" : ""}₹${data.change.toFixed(
-          2
-        )} (${data.changePercent >= 0 ? "+" : ""}${data.changePercent.toFixed(
-          1
-        )}%)`,
-        `Market capitalization: ₹${(data.marketCap / 10000000).toFixed(0)} Cr`,
-        `P/E Ratio: ${data.peRatio > 0 ? data.peRatio.toFixed(1) : "N/A"}`,
-        `Trading volume: ${(data.volume / 100000).toFixed(1)} lakh shares`,
+        `Current market price: ₹${data.currentPrice ? data.currentPrice.toFixed(2) : 'N/A'}`,
+        `Price change: ${data.change ? (data.change >= 0 ? "+" : "") + '₹' + data.change.toFixed(2) : 'N/A'} (${data.changePercent ? (data.changePercent >= 0 ? "+" : "") + data.changePercent.toFixed(1) + '%' : 'N/A'})`,
+        `Market capitalization: ₹${data.marketCap ? (data.marketCap / 10000000).toFixed(0) : 'N/A'} Cr`,
+        `P/E Ratio: ${data.peRatio && data.peRatio > 0 ? data.peRatio.toFixed(1) : "N/A"}`,
+        `Trading volume: ${data.volume ? (data.volume / 100000).toFixed(1) : 'N/A'} lakh shares`,
         `Data source: Fallback API (reliable alternative)`,
       ],
       currentPrice: data.currentPrice,

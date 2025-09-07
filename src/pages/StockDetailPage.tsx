@@ -7,9 +7,6 @@ import {
   TrendingUp,
   TrendingDown,
   BarChart3,
-  Target,
-  Shield,
-  IndianRupee,
   Activity,
   Brain,
   AlertTriangle,
@@ -30,7 +27,6 @@ import DataSourceBadge from "@/components/ui/DataSourceBadge";
 import RealMetricsGrid from "@/components/ui/RealMetricsGrid";
 import ApiKeyNotice from "@/components/ui/ApiKeyNotice";
 import {
-  getStockAnalysis,
   getRealStockMetrics,
   hybridStockService,
 } from "@/services/hybridStockService";
@@ -99,8 +95,11 @@ const StockDetailPage: React.FC = () => {
     }
   };
 
-  // Format currency
-  const formatCurrency = (amount: number) => {
+  // Format currency with null safety
+  const formatCurrency = (amount: number | null | undefined) => {
+    if (!amount && amount !== 0) {
+      return "₹N/A";
+    }
     return new Intl.NumberFormat("en-IN", {
       style: "currency",
       currency: "INR",
@@ -108,8 +107,11 @@ const StockDetailPage: React.FC = () => {
     }).format(amount);
   };
 
-  // Format market cap
-  const formatMarketCap = (marketCap: number) => {
+  // Format market cap with null safety
+  const formatMarketCap = (marketCap: number | null | undefined) => {
+    if (!marketCap || marketCap === 0) {
+      return "₹N/A";
+    }
     if (marketCap >= 1e12) {
       return `₹${(marketCap / 1e12).toFixed(1)}T`;
     } else if (marketCap >= 1e9) {
@@ -345,10 +347,10 @@ const StockDetailPage: React.FC = () => {
             <div className="flex items-center space-x-4">
               <div className="text-right">
                 <p className="text-2xl font-bold text-gray-900">
-                  {formatCurrency(stockAnalysis.currentPrice)}
+                  {formatCurrency(stockAnalysis?.currentPrice)}
                 </p>
                 <p className="text-sm text-gray-600">
-                  {formatMarketCap(stockAnalysis.marketCap)}
+                  {formatMarketCap(stockAnalysis?.marketCap)}
                 </p>
               </div>
 
@@ -605,7 +607,6 @@ const StockDetailPage: React.FC = () => {
                       </div>
                       <RealMetricsGrid
                         metrics={realMetrics.metrics}
-                        dataSource={realMetrics.dataSource}
                         onMetricClick={handleStatClick}
                       />
                     </>
@@ -644,7 +645,7 @@ const StockDetailPage: React.FC = () => {
                   <div className="space-y-4">
                     {Object.entries(stockAnalysis.technicalIndicators).map(
                       ([key, indicator]) => {
-                        if (key === "support" || key === "resistance")
+                        if (key === "support" || key === "resistance" || Array.isArray(indicator))
                           return null;
 
                         const signalConfig = getSignalConfig(indicator.signal);
