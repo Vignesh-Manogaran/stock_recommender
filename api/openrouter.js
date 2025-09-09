@@ -36,7 +36,7 @@ export default async function handler(req, res) {
       return;
     }
 
-    const { symbol, prompt, model } = req.body;
+    const { symbol, prompt, model, maxTokens } = req.body;
 
     if (!symbol || !prompt) {
       res.status(400).json({ error: "Symbol and prompt are required" });
@@ -75,11 +75,11 @@ export default async function handler(req, res) {
           messages: [
             {
               role: "user",
-              content: prompt,
+              content: typeof prompt === 'string' ? prompt.slice(0, 4000) : "",
             },
           ],
           temperature: 0.3,
-          max_tokens: 2000,
+          max_tokens: typeof maxTokens === 'number' ? Math.min(Math.max(100, maxTokens), 1200) : 400,
         }),
       }
     );
