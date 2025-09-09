@@ -424,12 +424,31 @@ class RapidApiYahooService {
 
       const response = await this.makeRequest(`${this.baseUrl}/stock/get-balance-sheet?lang=en-US&region=IN&symbol=${yahooSymbol}`);
 
-      const data = response.quoteSummary.result[0];
-      console.log(
-        `✅ RapidAPI Yahoo: Balance sheet data received for ${yahooSymbol}`, data
-      );
+      // Normalize different possible response structures
+      let data: any = null;
+      if (response?.quoteSummary?.result?.[0]) {
+        data = response.quoteSummary.result[0];
+        console.log(`📊 Found balance sheet in: quoteSummary.result[0]`);
+      } else if (response?.body?.quoteSummary?.result?.[0]) {
+        data = response.body.quoteSummary.result[0];
+        console.log(`📊 Found balance sheet in: body.quoteSummary.result[0]`);
+      } else if (response?.balanceSheetHistory || response?.balanceSheetHistoryQuarterly) {
+        data = response;
+        console.log(`📊 Found balance sheet fields in root response`);
+      } else {
+        console.log(`⚠️ No balance sheet data found in expected location`);
+        console.log(`🔍 Available keys:`, Object.keys(response || {}));
+      }
 
-      return data;
+      if (data) {
+        console.log(
+          `✅ RapidAPI Yahoo: Balance sheet data received for ${yahooSymbol}`,
+          data
+        );
+        return data;
+      }
+
+      return null;
     } catch (error) {
       console.error(
         `❌ RapidAPI Yahoo balance sheet failed for ${symbol}:`,
@@ -451,12 +470,31 @@ class RapidApiYahooService {
 
       const response = await this.makeRequest(`${this.baseUrl}/stock/get-cashflow?region=IN&lang=en-US&symbol=${yahooSymbol}`);
 
-      const data = response.quoteSummary.result[0];
-      console.log(
-        `✅ RapidAPI Yahoo: Cash flow data received for ${yahooSymbol}`, data
-      );
+      // Normalize different possible response structures
+      let data: any = null;
+      if (response?.quoteSummary?.result?.[0]) {
+        data = response.quoteSummary.result[0];
+        console.log(`📊 Found cash flow in: quoteSummary.result[0]`);
+      } else if (response?.body?.quoteSummary?.result?.[0]) {
+        data = response.body.quoteSummary.result[0];
+        console.log(`📊 Found cash flow in: body.quoteSummary.result[0]`);
+      } else if (response?.cashflowStatementHistory || response?.cashflowStatementHistoryQuarterly) {
+        data = response;
+        console.log(`📊 Found cash flow fields in root response`);
+      } else {
+        console.log(`⚠️ No cash flow data found in expected location`);
+        console.log(`🔍 Available keys:`, Object.keys(response || {}));
+      }
 
-      return data;
+      if (data) {
+        console.log(
+          `✅ RapidAPI Yahoo: Cash flow data received for ${yahooSymbol}`,
+          data
+        );
+        return data;
+      }
+
+      return null;
     } catch (error) {
       console.error(
         `❌ RapidAPI Yahoo cash flow failed for ${symbol}:`,
