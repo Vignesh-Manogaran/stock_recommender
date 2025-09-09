@@ -123,53 +123,14 @@ export class HybridStockService {
         console.log(`✅ RAPIDAPI YAHOO SUCCESS FOR ${symbol}!`);
         console.log(`✅ USING REAL API DATA FROM RAPIDAPI YAHOO`);
         console.log(`✅ ================================`);
-
-        // Log detailed API response for debugging
-        console.log(`📊 RapidAPI Response Metadata:`, rapidYahooData._metadata);
+        // Build enhanced metrics (profitability/liquidity/etc.) and then fill via AI if needed
+        const enhancedData = await this.getEnhancedFinancialData(symbol);
+        const baseAnalysis = this.createEnhancedAnalysis(symbol, enhancedData);
+        const filled = await this.fillMissingProfitabilityWithAI(symbol, baseAnalysis);
         console.log(
-          `📈 Stock Quote Data:`,
-          rapidYahooData.optionChain?.result?.[0]?.quote
+          `✅ RAPIDAPI YAHOO DATA: Price = ₹${filled.currentPrice}`
         );
-
-        const baseAnalysis =
-          this.convertRapidYahooDataToAnalysis(rapidYahooData);
-        console.log(
-          `✅ RAPIDAPI YAHOO DATA: Price = ₹${baseAnalysis.currentPrice}`
-        );
-        console.log(`📋 Converted Analysis:`, {
-          symbol: baseAnalysis.symbol,
-          name: baseAnalysis.name,
-          currentPrice: baseAnalysis.currentPrice,
-          marketCap: baseAnalysis.marketCap,
-        });
-
-        // Try AI enhancement
-        try {
-          const aiAnalysis = await this.getVercelAiAnalysis(symbol);
-          console.log(
-            `🤖 AI ENHANCEMENT SUCCESSFUL - COMBINING WITH RAPIDAPI YAHOO DATA`
-          );
-          const finalAnalysis = this.mergeRapidYahooAnalysis(
-            baseAnalysis,
-            aiAnalysis
-          );
-          console.log(`🎯 ===== FINAL RESULT FOR ${symbol} =====`);
-          console.log(`📊 Data Source: RapidAPI Yahoo + AI Enhancement`);
-          console.log(`💰 Final Price: ₹${finalAnalysis.currentPrice}`);
-          console.log(`🏢 Company: ${finalAnalysis.name}`);
-          console.log(`🎯 ===================================`);
-          return finalAnalysis;
-        } catch (aiError) {
-          console.log(
-            `⚠️ AI ENHANCEMENT FAILED - USING RAPIDAPI YAHOO DATA ONLY`
-          );
-          console.log(`🎯 ===== FINAL RESULT FOR ${symbol} =====`);
-          console.log(`📊 Data Source: RapidAPI Yahoo Only`);
-          console.log(`💰 Final Price: ₹${baseAnalysis.currentPrice}`);
-          console.log(`🏢 Company: ${baseAnalysis.name}`);
-          console.log(`🎯 ===================================`);
-          return baseAnalysis;
-        }
+        return filled;
       }
     } catch (error) {
       console.log(
@@ -322,7 +283,8 @@ export class HybridStockService {
 
         if (enhancedData.hasRealData) {
           console.log(`✅ Enhanced data available for ${symbol}!`);
-          return this.createEnhancedAnalysis(symbol, enhancedData);
+          const base = this.createEnhancedAnalysis(symbol, enhancedData);
+          return await this.fillMissingProfitabilityWithAI(symbol, base);
         }
       } catch (error) {
         const msg = error instanceof Error ? error.message : String(error);
@@ -1073,20 +1035,65 @@ export class HybridStockService {
       earningsSeries.length >= 4 ? earningsSeries.slice(-4) : earningsSeries
     );
 
-    // Prepare income statement series for fallback calculations
+    // Prepare income statement and balance sheet series for fallback calculations
     const incHistQ: any[] =
       (financials as any)?.incomeStatementHistoryQuarterly?.incomeStatementHistory || [];
+    const incHistA: any[] =
+      (financials as any)?.incomeStatementHistory?.incomeStatementHistory || [];
     const latestIncQ = Array.isArray(incHistQ) && incHistQ.length > 0 ? incHistQ[0] : null;
-    const latestRevenue = latestIncQ?.totalRevenue?.raw ?? null;
-    const latestGrossProfit = latestIncQ?.grossProfit?.raw ?? null;
-    const latestOperatingIncome = latestIncQ?.operatingIncome?.raw ?? null;
-    const latestNetIncome = latestIncQ?.netIncome?.raw ?? null;
+    const bsHistQ: any[] =
+      (balanceSheet as any)?.balanceSheetHistoryQuarterly?.balanceSheetStatements || [];
+    const bsHistA: any[] =
+      (balanceSheet as any)?.balanceSheetHistory?.balanceSheetStatements || [];
+
+    // Helpers
+    const val = (obj: any, key: string): number | null => {
+      const raw = obj?.[key]?.raw;
+      return typeof raw === 'number' ? raw : null;
+    };
+    const sumTTM = (arr: any[], key: string, count: number = 4): number | null => {
+      if (!Array.isArray(arr) || arr.length === 0) return null;
+      let total = 0;
+      let used = 0;
+      for (let i = 0; i < arr.length && used < count; i++) {
+        const v = val(arr[i], key);
+        if (typeof v === 'number' && v !== 0) {
+          total += v;
+          used++;
+        }
+      }
+      return used > 0 ? total : null;
+    };
+    const latestNonZero = (arr: any[], key: string): number | null => {
+      if (!Array.isArray(arr)) return null;
+      for (let i = 0; i < arr.length; i++) {
+        const v = val(arr[i], key);
+        if (typeof v === 'number' && v !== 0) return v;
+      }
+      return null;
+    };
+
+    // Latest quarterly values (may be zero for some IN stocks in RapidAPI)
+    const latestRevenue = val(latestIncQ, 'totalRevenue');
+    const latestGrossProfit = val(latestIncQ, 'grossProfit');
+    const latestOperatingIncome = val(latestIncQ, 'operatingIncome');
+    const latestNetIncome = val(latestIncQ, 'netIncome');
+
+    // Robust TTM values and annual fallbacks
+    const revenueTTM = sumTTM(incHistQ, 'totalRevenue')
+      ?? latestNonZero(incHistA, 'totalRevenue');
+    const grossProfitTTM = sumTTM(incHistQ, 'grossProfit')
+      ?? latestNonZero(incHistA, 'grossProfit');
+    const ebitTTM = sumTTM(incHistQ, 'ebit')
+      ?? latestNonZero(incHistA, 'ebit');
+    const netIncomeTTMInc = sumTTM(incHistQ, 'netIncome')
+      ?? latestNonZero(incHistA, 'netIncome');
 
     // TTM and book-value based fallbacks from quote/statistics
     const sharesOut =
       quoteData?.sharesOutstanding || keyStats?.sharesOutstanding || null;
     const bookValuePerShare = keyStats?.bookValue || quoteData?.bookValue || null;
-    const netIncomeTTM = keyStats?.netIncomeToCommon || null;
+    const netIncomeTTM = keyStats?.netIncomeToCommon || netIncomeTTMInc || null;
     const psRatio = quoteData?.priceToSales || summaryData?.priceToSalesTrailing12Months || null;
     const ttmRevenue =
       quoteData?.revenue || (marketCap && psRatio ? marketCap / psRatio : null);
@@ -1119,8 +1126,11 @@ export class HybridStockService {
         ? DataSource.RAPID_API_YAHOO
         : null;
 
+    // Gross Margin from statements (prefer TTM; avoid zeros)
     const grossMarginFromIncome =
-      latestGrossProfit != null && latestRevenue
+      grossProfitTTM != null && revenueTTM
+        ? (grossProfitTTM / revenueTTM) * 100
+        : latestGrossProfit != null && latestRevenue
         ? (latestGrossProfit / latestRevenue) * 100
         : null;
     const grossMarginVal =
@@ -1137,7 +1147,9 @@ export class HybridStockService {
         : null;
 
     const operatingMarginFromIncome =
-      latestOperatingIncome != null && latestRevenue
+      ebitTTM != null && revenueTTM
+        ? (ebitTTM / revenueTTM) * 100
+        : latestOperatingIncome != null && latestRevenue
         ? (latestOperatingIncome / latestRevenue) * 100
         : null;
     const operatingMarginFromEbitda =
@@ -1158,7 +1170,9 @@ export class HybridStockService {
         : null;
 
     const netMarginFromIncome =
-      latestNetIncome != null && latestRevenue
+      netIncomeTTMInc != null && revenueTTM
+        ? (netIncomeTTMInc / revenueTTM) * 100
+        : latestNetIncome != null && latestRevenue
         ? (latestNetIncome / latestRevenue) * 100
         : null;
     const netMarginFromTTM =
@@ -1178,13 +1192,40 @@ export class HybridStockService {
         ? DataSource.CALCULATED
         : null;
 
+    // Balance Sheet derived fallbacks for ROA/ROCE
+    const latestAssets = val(bsHistQ?.[0], 'totalAssets')
+      ?? val(bsHistA?.[0], 'totalAssets');
+    const latestCurrLiab = val(bsHistQ?.[0], 'totalCurrentLiabilities')
+      ?? val(bsHistA?.[0], 'totalCurrentLiabilities');
+    const capitalEmployed =
+      latestAssets != null && latestCurrLiab != null
+        ? latestAssets - latestCurrLiab
+        : null;
+
+    const roaFromTTM =
+      netIncomeTTM != null && latestAssets
+        ? (netIncomeTTM / latestAssets) * 100
+        : null;
+    const roceFromTTM =
+      ebitTTM != null && capitalEmployed
+        ? (ebitTTM / capitalEmployed) * 100
+        : null;
+
     // Create profitability metrics with real data sources - no mock fallbacks
     const profitability: Record<string, MetricWithSource> = {
       ROE: this.createMetricWithNA(roeVal, roeSource),
-      ROA: this.createMetricWithNA(roaVal, roaSource),
+      ROA: this.createMetricWithNA(
+        roaVal ?? roaFromTTM,
+        roaVal != null ? roaSource : roaFromTTM != null ? DataSource.CALCULATED : null
+      ),
       ROCE: this.createMetricWithNA(
-        null, // Not typically available directly in Yahoo Finance
-        null
+        (keyStats?.returnOnCapitalEmployed?.raw != null ? keyStats.returnOnCapitalEmployed.raw * 100 : null) ??
+          roceFromTTM,
+        keyStats?.returnOnCapitalEmployed?.raw != null
+          ? DataSource.RAPID_API_YAHOO
+          : roceFromTTM != null
+          ? DataSource.CALCULATED
+          : null
       ),
       "Gross Margin": this.createMetricWithNA(grossMarginVal, grossMarginSource),
       "Operating Margin": this.createMetricWithNA(operatingMarginVal, operatingMarginSource),
