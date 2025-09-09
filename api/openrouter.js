@@ -45,6 +45,15 @@ export default async function handler(req, res) {
 
     console.log(`📡 Vercel API: Fetching OpenRouter analysis for ${symbol}`);
 
+    // Derive a proper referer for OpenRouter allowlisting
+    const originHeader = req.headers.origin;
+    const hostHeader = req.headers.host;
+    const vercelUrl = process.env.VERCEL_URL
+      ? `https://${process.env.VERCEL_URL}`
+      : undefined;
+    const referer =
+      originHeader || vercelUrl || (hostHeader ? `https://${hostHeader}` : "http://localhost:3000");
+
     const openRouterResponse = await fetch(
       "https://openrouter.ai/api/v1/chat/completions",
       {
@@ -52,9 +61,7 @@ export default async function handler(req, res) {
         headers: {
           Authorization: `Bearer ${apiKey}`,
           "Content-Type": "application/json",
-          "HTTP-Referer": process.env.VERCEL_URL
-            ? `https://${process.env.VERCEL_URL}`
-            : "http://localhost:3000",
+          "HTTP-Referer": referer,
           "X-Title": "Stock Recommender App",
         },
         body: JSON.stringify({

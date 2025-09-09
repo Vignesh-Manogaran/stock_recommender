@@ -266,7 +266,9 @@ export class HybridStockService {
         const enhancedData = await this.getEnhancedFinancialData(symbol);
         if (enhancedData.hasRealData) {
           console.log(`✅ Direct RapidAPI Yahoo success for ${symbol} (no proxy)`);
-          return this.createEnhancedAnalysis(symbol, enhancedData);
+          const baseAnalysis = this.createEnhancedAnalysis(symbol, enhancedData);
+          const filled = await this.fillMissingProfitabilityWithAI(symbol, baseAnalysis);
+          return filled;
         }
       } else {
         console.log(`🔑 RapidAPI key not configured; skipping direct RapidAPI fallback.`);
@@ -431,7 +433,8 @@ export class HybridStockService {
         }
       }
     } catch (error) {
-      console.error(`❌ Failed to fetch real chart data: ${error.message}`);
+      const msg = error instanceof Error ? error.message : String(error);
+      console.error(`❌ Failed to fetch real chart data: ${msg}`);
     }
 
     // Fallback to mock data
@@ -1079,58 +1082,113 @@ export class HybridStockService {
     const latestOperatingIncome = latestIncQ?.operatingIncome?.raw ?? null;
     const latestNetIncome = latestIncQ?.netIncome?.raw ?? null;
 
+    // TTM and book-value based fallbacks from quote/statistics
+    const sharesOut =
+      quoteData?.sharesOutstanding || keyStats?.sharesOutstanding || null;
+    const bookValuePerShare = keyStats?.bookValue || quoteData?.bookValue || null;
+    const netIncomeTTM = keyStats?.netIncomeToCommon || null;
+    const psRatio = quoteData?.priceToSales || summaryData?.priceToSalesTrailing12Months || null;
+    const ttmRevenue =
+      quoteData?.revenue || (marketCap && psRatio ? marketCap / psRatio : null);
+    const ebitdaTTM = quoteData?.ebitda || null;
+
+    // Compute robust profitability values and their sources
+    const roeVal =
+      finData?.returnOnEquity?.raw != null
+        ? finData.returnOnEquity.raw * 100
+        : keyStats?.returnOnEquity?.raw != null
+        ? keyStats.returnOnEquity.raw * 100
+        : netIncomeTTM != null && sharesOut && bookValuePerShare
+        ? (netIncomeTTM / (bookValuePerShare * sharesOut)) * 100
+        : null;
+    const roeSource: DataSource | null =
+      finData?.returnOnEquity?.raw != null || keyStats?.returnOnEquity?.raw != null
+        ? DataSource.RAPID_API_YAHOO
+        : netIncomeTTM != null && sharesOut && bookValuePerShare
+        ? DataSource.CALCULATED
+        : null;
+
+    const roaVal =
+      finData?.returnOnAssets?.raw != null
+        ? finData.returnOnAssets.raw * 100
+        : keyStats?.returnOnAssets?.raw != null
+        ? keyStats.returnOnAssets.raw * 100
+        : null; // If assets unavailable, we'll use AI fallback later
+    const roaSource: DataSource | null =
+      finData?.returnOnAssets?.raw != null || keyStats?.returnOnAssets?.raw != null
+        ? DataSource.RAPID_API_YAHOO
+        : null;
+
+    const grossMarginFromIncome =
+      latestGrossProfit != null && latestRevenue
+        ? (latestGrossProfit / latestRevenue) * 100
+        : null;
+    const grossMarginVal =
+      finData?.grossMargins?.raw != null
+        ? finData.grossMargins.raw * 100
+        : keyStats?.grossMargins?.raw != null
+        ? keyStats.grossMargins.raw * 100
+        : grossMarginFromIncome;
+    const grossMarginSource: DataSource | null =
+      finData?.grossMargins?.raw != null || keyStats?.grossMargins?.raw != null
+        ? DataSource.RAPID_API_YAHOO
+        : grossMarginFromIncome != null
+        ? DataSource.CALCULATED
+        : null;
+
+    const operatingMarginFromIncome =
+      latestOperatingIncome != null && latestRevenue
+        ? (latestOperatingIncome / latestRevenue) * 100
+        : null;
+    const operatingMarginFromEbitda =
+      ebitdaTTM != null && ttmRevenue
+        ? (ebitdaTTM / ttmRevenue) * 100
+        : null;
+    const operatingMarginVal =
+      finData?.operatingMargins?.raw != null
+        ? finData.operatingMargins.raw * 100
+        : keyStats?.operatingMargins?.raw != null
+        ? keyStats.operatingMargins.raw * 100
+        : operatingMarginFromIncome ?? operatingMarginFromEbitda;
+    const operatingMarginSource: DataSource | null =
+      finData?.operatingMargins?.raw != null || keyStats?.operatingMargins?.raw != null
+        ? DataSource.RAPID_API_YAHOO
+        : operatingMarginFromIncome != null || operatingMarginFromEbitda != null
+        ? DataSource.CALCULATED
+        : null;
+
+    const netMarginFromIncome =
+      latestNetIncome != null && latestRevenue
+        ? (latestNetIncome / latestRevenue) * 100
+        : null;
+    const netMarginFromTTM =
+      netIncomeTTM != null && ttmRevenue
+        ? (netIncomeTTM / ttmRevenue) * 100
+        : null;
+    const netMarginVal =
+      finData?.profitMargins?.raw != null
+        ? finData.profitMargins.raw * 100
+        : keyStats?.profitMargins?.raw != null
+        ? keyStats.profitMargins.raw * 100
+        : netMarginFromIncome ?? netMarginFromTTM;
+    const netMarginSource: DataSource | null =
+      finData?.profitMargins?.raw != null || keyStats?.profitMargins?.raw != null
+        ? DataSource.RAPID_API_YAHOO
+        : netMarginFromIncome != null || netMarginFromTTM != null
+        ? DataSource.CALCULATED
+        : null;
+
     // Create profitability metrics with real data sources - no mock fallbacks
     const profitability: Record<string, MetricWithSource> = {
-      ROE: this.createMetricWithNA(
-        (finData?.returnOnEquity?.raw ?? keyStats?.returnOnEquity?.raw ?? null) !== null
-          ? (finData?.returnOnEquity?.raw ?? keyStats?.returnOnEquity?.raw) * 100
-          : null,
-        finData?.returnOnEquity?.raw || keyStats?.returnOnEquity?.raw
-          ? DataSource.RAPID_API_YAHOO
-          : null
-      ),
-      ROA: this.createMetricWithNA(
-        (finData?.returnOnAssets?.raw ?? keyStats?.returnOnAssets?.raw ?? null) !== null
-          ? (finData?.returnOnAssets?.raw ?? keyStats?.returnOnAssets?.raw) * 100
-          : null,
-        finData?.returnOnAssets?.raw || keyStats?.returnOnAssets?.raw
-          ? DataSource.RAPID_API_YAHOO
-          : null
-      ),
+      ROE: this.createMetricWithNA(roeVal, roeSource),
+      ROA: this.createMetricWithNA(roaVal, roaSource),
       ROCE: this.createMetricWithNA(
         null, // Not typically available directly in Yahoo Finance
         null
       ),
-      "Gross Margin": this.createMetricWithNA(
-        (finData?.grossMargins?.raw ?? keyStats?.grossMargins?.raw ?? (latestGrossProfit !== null && latestRevenue ? latestGrossProfit / latestRevenue : null)) !== null
-          ? ((finData?.grossMargins?.raw ?? keyStats?.grossMargins?.raw) ?? (latestGrossProfit / latestRevenue)) * 100
-          : null,
-        finData?.grossMargins?.raw || keyStats?.grossMargins?.raw
-          ? DataSource.RAPID_API_YAHOO
-          : latestGrossProfit !== null && latestRevenue
-          ? DataSource.CALCULATED
-          : null
-      ),
-      "Operating Margin": this.createMetricWithNA(
-        (finData?.operatingMargins?.raw ?? keyStats?.operatingMargins?.raw ?? (latestOperatingIncome !== null && latestRevenue ? latestOperatingIncome / latestRevenue : null)) !== null
-          ? ((finData?.operatingMargins?.raw ?? keyStats?.operatingMargins?.raw) ?? (latestOperatingIncome / latestRevenue)) * 100
-          : null,
-        finData?.operatingMargins?.raw || keyStats?.operatingMargins?.raw
-          ? DataSource.RAPID_API_YAHOO
-          : latestOperatingIncome !== null && latestRevenue
-          ? DataSource.CALCULATED
-          : null
-      ),
-      "Net Margin": this.createMetricWithNA(
-        (finData?.profitMargins?.raw ?? keyStats?.profitMargins?.raw ?? (latestNetIncome !== null && latestRevenue ? latestNetIncome / latestRevenue : null)) !== null
-          ? ((finData?.profitMargins?.raw ?? keyStats?.profitMargins?.raw) ?? (latestNetIncome / latestRevenue)) * 100
-          : null,
-        finData?.profitMargins?.raw || keyStats?.profitMargins?.raw
-          ? DataSource.RAPID_API_YAHOO
-          : latestNetIncome !== null && latestRevenue
-          ? DataSource.CALCULATED
-          : null
-      ),
+      "Gross Margin": this.createMetricWithNA(grossMarginVal, grossMarginSource),
+      "Operating Margin": this.createMetricWithNA(operatingMarginVal, operatingMarginSource),
+      "Net Margin": this.createMetricWithNA(netMarginVal, netMarginSource),
     };
 
     // Create liquidity metrics with real data sources - no mock fallbacks
@@ -1511,6 +1569,7 @@ export class HybridStockService {
       currentPrice: currentPrice,
       marketCap: quote.marketCap || 0,
       sector: "Technology",
+      industry: "N/A",
       lastUpdated: new Date(), // UI expects lastUpdated
       about:
         "Leading Indian IT services company providing digital transformation solutions.",
@@ -1644,6 +1703,66 @@ export class HybridStockService {
     }
 
     return baseAnalysis;
+  }
+
+  // Fill missing profitability metrics using OpenRouter via Vercel proxy
+  private async fillMissingProfitabilityWithAI(
+    symbol: string,
+    analysis: DetailedStockAnalysis
+  ): Promise<DetailedStockAnalysis> {
+    try {
+      const prof = analysis.financialHealth?.profitability || {} as Record<string, MetricWithSource>;
+      const wanted = [
+        "ROE",
+        "ROA",
+        "ROCE",
+        "Gross Margin",
+        "Operating Margin",
+        "Net Margin",
+      ];
+
+      const missing = wanted.filter((k) => {
+        const m = (prof as any)[k];
+        return !m || m.isNA || m.dataSource === DataSource.MOCK || !m.value;
+      });
+
+      if (missing.length === 0) return analysis;
+
+      const prompt = `Return ONLY JSON (no prose) estimating missing profitability ratios for ${symbol}. Keys must be exactly: {"profitability": {"ROE": number, "ROA": number, "ROCE": number, "Gross Margin": number, "Operating Margin": number, "Net Margin": number}}. Values are percentages without % sign.`;
+
+      const resp = await VercelApiService.fetchOpenRouterAnalysis(symbol, prompt);
+      const content = resp?.choices?.[0]?.message?.content || "";
+      let jsonStr = content;
+      const codeMatch = content.match(/\{[\s\S]*\}/);
+      if (codeMatch) jsonStr = codeMatch[0];
+      let parsed: any = null;
+      try { parsed = JSON.parse(jsonStr); } catch (_) { parsed = null; }
+      if (!parsed || !parsed.profitability) return analysis;
+
+      const updated = { ...analysis } as DetailedStockAnalysis;
+      updated.financialHealth = { ...analysis.financialHealth } as any;
+      const baseProf = { ...(analysis.financialHealth?.profitability || {}) } as Record<string, MetricWithSource>;
+
+      wanted.forEach((k) => {
+        const m = baseProf[k];
+        const val = parsed.profitability?.[k];
+        if ((!m || m.isNA || m.dataSource === DataSource.MOCK || !m.value) && typeof val === 'number' && isFinite(val)) {
+          baseProf[k] = {
+            value: val,
+            dataSource: DataSource.AI_GENERATED,
+            health: this.assessValueHealth(val),
+            lastUpdated: new Date(),
+          } as MetricWithSource;
+        }
+      });
+
+      (updated.financialHealth as any).profitability = baseProf;
+      return updated;
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      console.log(`⚠️ AI profitability fill skipped: ${msg}`);
+      return analysis;
+    }
   }
 }
 
