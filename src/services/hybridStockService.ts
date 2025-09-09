@@ -979,8 +979,22 @@ export class HybridStockService {
     const summaryData = summary?.summaryDetail || summary;
     const quoteData = quote || summaryData;
     const statsObj = statistics || {};
-    const keyStats = statsObj?.defaultKeyStatistics || {};
-    const finData = statsObj?.financialData || {};
+    const keyStats =
+      statsObj?.defaultKeyStatistics ||
+      (statistics as any)?.quoteSummary?.result?.[0]?.defaultKeyStatistics ||
+      (financials as any)?.defaultKeyStatistics ||
+      {};
+
+    // financialData can appear under either statistics or financials payloads
+    const finFromStats =
+      (statistics as any)?.financialData ||
+      (statistics as any)?.quoteSummary?.result?.[0]?.financialData ||
+      {};
+    const finFromFinancials =
+      (financials as any)?.financialData ||
+      (financials as any)?.quoteSummary?.result?.[0]?.financialData ||
+      {};
+    const finData = { ...finFromStats, ...finFromFinancials };
     const profileData = profile?.assetProfile || profile;
 
     // Extract real data or mark as null for N/A display
@@ -1056,21 +1070,30 @@ export class HybridStockService {
       earningsSeries.length >= 4 ? earningsSeries.slice(-4) : earningsSeries
     );
 
+    // Prepare income statement series for fallback calculations
+    const incHistQ: any[] =
+      (financials as any)?.incomeStatementHistoryQuarterly?.incomeStatementHistory || [];
+    const latestIncQ = Array.isArray(incHistQ) && incHistQ.length > 0 ? incHistQ[0] : null;
+    const latestRevenue = latestIncQ?.totalRevenue?.raw ?? null;
+    const latestGrossProfit = latestIncQ?.grossProfit?.raw ?? null;
+    const latestOperatingIncome = latestIncQ?.operatingIncome?.raw ?? null;
+    const latestNetIncome = latestIncQ?.netIncome?.raw ?? null;
+
     // Create profitability metrics with real data sources - no mock fallbacks
     const profitability: Record<string, MetricWithSource> = {
       ROE: this.createMetricWithNA(
-        (keyStats?.returnOnEquity?.raw ?? finData?.returnOnEquity?.raw ?? null) !== null
-          ? (keyStats?.returnOnEquity?.raw ?? finData?.returnOnEquity?.raw) * 100
+        (finData?.returnOnEquity?.raw ?? keyStats?.returnOnEquity?.raw ?? null) !== null
+          ? (finData?.returnOnEquity?.raw ?? keyStats?.returnOnEquity?.raw) * 100
           : null,
-        keyStats?.returnOnEquity?.raw || finData?.returnOnEquity?.raw
+        finData?.returnOnEquity?.raw || keyStats?.returnOnEquity?.raw
           ? DataSource.RAPID_API_YAHOO
           : null
       ),
       ROA: this.createMetricWithNA(
-        (keyStats?.returnOnAssets?.raw ?? finData?.returnOnAssets?.raw ?? null) !== null
-          ? (keyStats?.returnOnAssets?.raw ?? finData?.returnOnAssets?.raw) * 100
+        (finData?.returnOnAssets?.raw ?? keyStats?.returnOnAssets?.raw ?? null) !== null
+          ? (finData?.returnOnAssets?.raw ?? keyStats?.returnOnAssets?.raw) * 100
           : null,
-        keyStats?.returnOnAssets?.raw || finData?.returnOnAssets?.raw
+        finData?.returnOnAssets?.raw || keyStats?.returnOnAssets?.raw
           ? DataSource.RAPID_API_YAHOO
           : null
       ),
@@ -1079,27 +1102,33 @@ export class HybridStockService {
         null
       ),
       "Gross Margin": this.createMetricWithNA(
-        (finData?.grossMargins?.raw ?? keyStats?.grossMargins?.raw ?? null) !== null
-          ? (finData?.grossMargins?.raw ?? keyStats?.grossMargins?.raw) * 100
+        (finData?.grossMargins?.raw ?? keyStats?.grossMargins?.raw ?? (latestGrossProfit !== null && latestRevenue ? latestGrossProfit / latestRevenue : null)) !== null
+          ? ((finData?.grossMargins?.raw ?? keyStats?.grossMargins?.raw) ?? (latestGrossProfit / latestRevenue)) * 100
           : null,
         finData?.grossMargins?.raw || keyStats?.grossMargins?.raw
           ? DataSource.RAPID_API_YAHOO
+          : latestGrossProfit !== null && latestRevenue
+          ? DataSource.CALCULATED
           : null
       ),
       "Operating Margin": this.createMetricWithNA(
-        (finData?.operatingMargins?.raw ?? keyStats?.operatingMargins?.raw ?? null) !== null
-          ? (finData?.operatingMargins?.raw ?? keyStats?.operatingMargins?.raw) * 100
+        (finData?.operatingMargins?.raw ?? keyStats?.operatingMargins?.raw ?? (latestOperatingIncome !== null && latestRevenue ? latestOperatingIncome / latestRevenue : null)) !== null
+          ? ((finData?.operatingMargins?.raw ?? keyStats?.operatingMargins?.raw) ?? (latestOperatingIncome / latestRevenue)) * 100
           : null,
         finData?.operatingMargins?.raw || keyStats?.operatingMargins?.raw
           ? DataSource.RAPID_API_YAHOO
+          : latestOperatingIncome !== null && latestRevenue
+          ? DataSource.CALCULATED
           : null
       ),
       "Net Margin": this.createMetricWithNA(
-        (finData?.profitMargins?.raw ?? keyStats?.profitMargins?.raw ?? null) !== null
-          ? (finData?.profitMargins?.raw ?? keyStats?.profitMargins?.raw) * 100
+        (finData?.profitMargins?.raw ?? keyStats?.profitMargins?.raw ?? (latestNetIncome !== null && latestRevenue ? latestNetIncome / latestRevenue : null)) !== null
+          ? ((finData?.profitMargins?.raw ?? keyStats?.profitMargins?.raw) ?? (latestNetIncome / latestRevenue)) * 100
           : null,
         finData?.profitMargins?.raw || keyStats?.profitMargins?.raw
           ? DataSource.RAPID_API_YAHOO
+          : latestNetIncome !== null && latestRevenue
+          ? DataSource.CALCULATED
           : null
       ),
     };
