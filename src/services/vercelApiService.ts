@@ -116,9 +116,19 @@ export class VercelApiService {
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        if (errorData.fallback) {
-          throw new Error("API_FALLBACK_NEEDED");
+        let errorText = await response.text();
+        try {
+          const errorData = JSON.parse(errorText);
+          console.error(
+            `❌ OpenRouter proxy error: status=${response.status}, error=${errorData.error}, message=${errorData.message || errorData.errorText}`
+          );
+          if (errorData.fallback) {
+            throw new Error("API_FALLBACK_NEEDED");
+          }
+        } catch (e) {
+          console.error(
+            `❌ OpenRouter proxy non-JSON error: status=${response.status}, body=${errorText}`
+          );
         }
         throw new Error(`Vercel OpenRouter API returned ${response.status}`);
       }

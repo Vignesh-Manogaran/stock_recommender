@@ -53,6 +53,7 @@ export default async function handler(req, res) {
       : undefined;
     const referer =
       originHeader || vercelUrl || (hostHeader ? `https://${hostHeader}` : "http://localhost:3000");
+    console.log(`🔗 Referer for OpenRouter: ${referer}`);
 
     const openRouterResponse = await fetch(
       "https://openrouter.ai/api/v1/chat/completions",
@@ -61,7 +62,12 @@ export default async function handler(req, res) {
         headers: {
           Authorization: `Bearer ${apiKey}`,
           "Content-Type": "application/json",
+          // OpenRouter requires a referer for attribution/allowlisting
           "HTTP-Referer": referer,
+          // Some environments check the standard header as well
+          "Referer": referer,
+          // And Origin for CORS consistency
+          "Origin": referer,
           "X-Title": "Stock Recommender App",
         },
         body: JSON.stringify({
@@ -79,10 +85,16 @@ export default async function handler(req, res) {
     );
 
     if (!openRouterResponse.ok) {
+      const status = openRouterResponse.status;
       const errorText = await openRouterResponse.text();
-      throw new Error(
-        `OpenRouter API returned ${openRouterResponse.status}: ${errorText}`
-      );
+      console.error(`❌ OpenRouter upstream error (${status}): ${errorText}`);
+      res.status(status).json({
+        error: "openrouter_upstream_error",
+        status,
+        errorText,
+        fallback: true,
+      });
+      return;
     }
 
     const data = await openRouterResponse.json();
@@ -92,10 +104,11 @@ export default async function handler(req, res) {
     );
     res.status(200).json(data);
   } catch (error) {
-    console.error("❌ Vercel API Error (OpenRouter):", error.message);
+    const msg = error instanceof Error ? error.message : String(error);
+    console.error("❌ Vercel API Error (OpenRouter):", msg);
     res.status(500).json({
-      error: "Failed to get AI analysis from OpenRouter",
-      message: error.message,
+      error: "vercel_function_error",
+      message: msg,
       fallback: true,
       timestamp: new Date().toISOString(),
     });

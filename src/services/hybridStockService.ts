@@ -193,24 +193,14 @@ export class HybridStockService {
         console.log(`✅ YAHOO FINANCE SUCCESS FOR ${symbol}!`);
         console.log(`✅ USING REAL API DATA FROM YAHOO FINANCE`);
         console.log(`✅ ================================`);
-        const baseAnalysis = this.convertYahooDataToAnalysis(yahooData);
+        // Build enhanced metrics and apply AI fill for profitability
+        const enhancedData = await this.getEnhancedFinancialData(symbol);
+        const baseAnalysis = this.createEnhancedAnalysis(symbol, enhancedData);
+        const filled = await this.fillMissingProfitabilityWithAI(symbol, baseAnalysis);
         console.log(
-          `✅ YAHOO FINANCE DATA: Price = ₹${baseAnalysis.currentPrice}`
+          `✅ YAHOO FINANCE DATA: Price = ₹${filled.currentPrice}`
         );
-
-        // Try AI enhancement
-        try {
-          const aiAnalysis = await this.getVercelAiAnalysis(symbol);
-          console.log(
-            `🤖 AI ENHANCEMENT SUCCESSFUL - COMBINING WITH YAHOO FINANCE DATA`
-          );
-          return this.mergeAnalysis(baseAnalysis, aiAnalysis, yahooData);
-        } catch (aiError) {
-          console.log(
-            `⚠️ AI ENHANCEMENT FAILED - USING YAHOO FINANCE DATA ONLY`
-          );
-          return baseAnalysis;
-        }
+        return filled;
       }
     } catch (error) {
       console.log(
@@ -1769,7 +1759,7 @@ export class HybridStockService {
 
       if (missing.length === 0) return analysis;
 
-      const prompt = `Return ONLY JSON (no prose) estimating missing profitability ratios for ${symbol}. Keys must be exactly: {"profitability": {"ROE": number, "ROA": number, "ROCE": number, "Gross Margin": number, "Operating Margin": number, "Net Margin": number}}. Values are percentages without % sign.`;
+      const prompt = `Return ONLY JSON (no prose) estimating missing profitability ratios for ${symbol}. Output must be valid JSON matching exactly this schema: {"profitability": {"ROE": number, "ROA": number, "ROCE": number, "Gross Margin": number, "Operating Margin": number, "Net Margin": number}}. Use numbers only (no quotes, no % sign).`;
 
       const resp = await VercelApiService.fetchOpenRouterAnalysis(symbol, prompt);
       const content = resp?.choices?.[0]?.message?.content || "";
@@ -1784,9 +1774,16 @@ export class HybridStockService {
       updated.financialHealth = { ...analysis.financialHealth } as any;
       const baseProf = { ...(analysis.financialHealth?.profitability || {}) } as Record<string, MetricWithSource>;
 
+      console.log(`🤖 Filling missing profitability via AI for ${symbol}:`, missing);
       wanted.forEach((k) => {
         const m = baseProf[k];
-        const val = parsed.profitability?.[k];
+        let val: any = parsed.profitability?.[k];
+        if (typeof val === 'string') {
+          // strip % and spaces then parse
+          const cleaned = val.replace(/%/g, '').trim();
+          const num = parseFloat(cleaned);
+          if (!Number.isNaN(num)) val = num;
+        }
         if ((!m || m.isNA || m.dataSource === DataSource.MOCK || !m.value) && typeof val === 'number' && isFinite(val)) {
           baseProf[k] = {
             value: val,
@@ -1794,6 +1791,7 @@ export class HybridStockService {
             health: this.assessValueHealth(val),
             lastUpdated: new Date(),
           } as MetricWithSource;
+          console.log(`✅ AI filled ${k}: ${val}%`);
         }
       });
 
