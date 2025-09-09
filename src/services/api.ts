@@ -1,5 +1,6 @@
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
 import type { APIResponse, APIError } from '@/types';
+import { VercelApiService } from './vercelApiService';
 
 // Create axios instance for general API calls
 const apiClient: AxiosInstance = axios.create({
@@ -93,11 +94,18 @@ export const apiService = {
 // OpenRouter AI API methods
 export const aiService = {
   chat: async (messages: any[], model?: string): Promise<any> => {
+    // Prefer Vercel proxy in deployed environments to avoid 401s and to centralize allowlisting
+    if (VercelApiService.isVercelEnvironment()) {
+      const prompt = messages.map(m => `${m.role.toUpperCase()}: ${m.content}`).join('\n');
+      return await VercelApiService.fetchOpenRouterAnalysis('generic', prompt, model || 'openrouter/auto');
+    }
+
+    // Local/dev fallback: direct OpenRouter call using axios client
     const response = await openRouterClient.post('/chat/completions', {
-      model: model || import.meta.env.VITE_DEFAULT_MODEL || 'anthropic/claude-3-sonnet',
+      model: model || import.meta.env.VITE_DEFAULT_MODEL || 'openrouter/auto',
       messages,
-      max_tokens: 1000,
-      temperature: 0.7,
+      max_tokens: 800,
+      temperature: 0.3,
       stream: false,
     });
     return response.data;

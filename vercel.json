@@ -7,7 +7,7 @@
       "maxDuration": 10
     },
     "api/openrouter.js": {
-      "maxDuration": 15
+      "maxDuration": 25
     },
     "api/financial-data.js": {
       "maxDuration": 10

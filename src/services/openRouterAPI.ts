@@ -4,6 +4,7 @@ import {
   SignalType,
   TechnicalIndicatorHealth,
 } from "@/types";
+import { VercelApiService } from "./vercelApiService";
 
 // OpenRouter API configuration
 const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
@@ -78,13 +79,10 @@ class OpenRouterAPIService {
   }
 
   async getStockAnalysis(symbol: string): Promise<DetailedStockAnalysis> {
-    // For development/demo, return mock data if no API key
-    if (!this.apiKey) {
-      return this.getMockAnalysis(symbol);
-    }
+    // Prefer Vercel proxy in deployed environments to avoid exposing keys and allowlisting issues
+    const useVercel = VercelApiService.isVercelEnvironment();
 
-    try {
-      const prompt = `Provide a comprehensive analysis for Indian stock ${symbol.toUpperCase()}. 
+    const prompt = `Provide a comprehensive analysis for Indian stock ${symbol.toUpperCase()}. 
       Include current market conditions, financial health assessment, technical indicators, 
       support/resistance levels, and actionable trading recommendations with specific price levels.
       
@@ -97,6 +95,19 @@ class OpenRouterAPIService {
       
       Provide real, actionable data with specific numbers where possible.`;
 
+    try {
+      if (useVercel) {
+        const resp = await VercelApiService.fetchOpenRouterAnalysis(symbol, prompt, "openrouter/auto");
+        const analysisText = resp?.choices?.[0]?.message?.content || "";
+        if (!analysisText) throw new Error("Empty AI response");
+        return this.parseAnalysisResponse(symbol, analysisText);
+      }
+
+      // Local/dev path: only call OpenRouter directly if a valid key exists
+      if (!this.apiKey) {
+        return this.getMockAnalysis(symbol);
+      }
+
       const response = await fetch(OPENROUTER_API_URL, {
         method: "POST",
         headers: {
@@ -106,19 +117,13 @@ class OpenRouterAPIService {
           "X-Title": "Stock Recommender App",
         },
         body: JSON.stringify({
-          model: "anthropic/claude-3.5-sonnet", // Using Claude 3.5 Sonnet for high-quality analysis
+          model: "openrouter/auto",
           messages: [
-            {
-              role: "system",
-              content: SYSTEM_PROMPT,
-            },
-            {
-              role: "user",
-              content: prompt,
-            },
+            { role: "system", content: SYSTEM_PROMPT },
+            { role: "user", content: prompt },
           ],
-          temperature: 0.3, // Lower temperature for more consistent financial analysis
-          max_tokens: 4000,
+          temperature: 0.3,
+          max_tokens: 1200,
           stream: false,
         }),
       });
@@ -131,16 +136,10 @@ class OpenRouterAPIService {
 
       const data: OpenRouterResponse = await response.json();
       const analysisText = data.choices[0]?.message?.content;
-
-      if (!analysisText) {
-        throw new Error("No analysis content received from OpenRouter API");
-      }
-
-      // Parse the AI response and convert to our structured format
+      if (!analysisText) throw new Error("No analysis content received from OpenRouter API");
       return this.parseAnalysisResponse(symbol, analysisText);
     } catch (error) {
       console.error("Error calling OpenRouter API:", error);
-      // Fallback to mock data if API fails
       return this.getMockAnalysis(symbol);
     }
   }

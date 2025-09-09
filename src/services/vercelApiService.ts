@@ -98,7 +98,8 @@ export class VercelApiService {
   static async fetchOpenRouterAnalysis(
     symbol: string,
     prompt: string,
-    model?: string
+    model?: string,
+    maxTokens: number = 400
   ) {
     try {
       console.log(`📡 Vercel API: Calling OpenRouter for ${symbol}`);
@@ -112,6 +113,7 @@ export class VercelApiService {
           symbol,
           prompt,
           model,
+          maxTokens,
         }),
       });
 
@@ -239,8 +241,11 @@ export class VercelApiService {
   static isVercelEnvironment(): boolean {
     return (
       typeof window !== "undefined" &&
-      (window.location.hostname.includes("vercel.app") ||
-        process.env.VERCEL_ENV !== undefined)
+      (
+        // Any non-localhost host should go through serverless proxy
+        window.location.hostname !== "localhost" &&
+        window.location.hostname !== "127.0.0.1"
+      )
     );
   }
 }
