@@ -71,7 +71,7 @@ export default async function handler(req, res) {
           "X-Title": "Stock Recommender App",
         },
         body: JSON.stringify({
-          model: model || "meta-llama/llama-3.1-8b-instruct:free",
+          model: model || "openrouter/auto",
           messages: [
             {
               role: "user",

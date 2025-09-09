@@ -125,12 +125,15 @@ export class HybridStockService {
         console.log(`✅ ================================`);
         // Build enhanced metrics (profitability/liquidity/etc.) and then fill via AI if needed
         const enhancedData = await this.getEnhancedFinancialData(symbol);
-        const baseAnalysis = this.createEnhancedAnalysis(symbol, enhancedData);
-        const filled = await this.fillMissingProfitabilityWithAI(symbol, baseAnalysis);
+        let analysis = this.createEnhancedAnalysis(symbol, enhancedData);
+        analysis = await this.fillMissingProfitabilityWithAI(symbol, analysis);
+        analysis = await this.fillMissingLiquidityWithAI(symbol, analysis);
+        analysis = await this.fillMissingValuationWithAI(symbol, analysis);
+        analysis = await this.fillMissingGrowthWithAI(symbol, analysis);
         console.log(
-          `✅ RAPIDAPI YAHOO DATA: Price = ₹${filled.currentPrice}`
+          `✅ RAPIDAPI YAHOO DATA: Price = ₹${analysis.currentPrice}`
         );
-        return filled;
+        return analysis;
       }
     } catch (error) {
       console.log(
@@ -193,14 +196,17 @@ export class HybridStockService {
         console.log(`✅ YAHOO FINANCE SUCCESS FOR ${symbol}!`);
         console.log(`✅ USING REAL API DATA FROM YAHOO FINANCE`);
         console.log(`✅ ================================`);
-        // Build enhanced metrics and apply AI fill for profitability
+        // Build enhanced metrics and apply AI fills for missing categories
         const enhancedData = await this.getEnhancedFinancialData(symbol);
-        const baseAnalysis = this.createEnhancedAnalysis(symbol, enhancedData);
-        const filled = await this.fillMissingProfitabilityWithAI(symbol, baseAnalysis);
+        let analysis = this.createEnhancedAnalysis(symbol, enhancedData);
+        analysis = await this.fillMissingProfitabilityWithAI(symbol, analysis);
+        analysis = await this.fillMissingLiquidityWithAI(symbol, analysis);
+        analysis = await this.fillMissingValuationWithAI(symbol, analysis);
+        analysis = await this.fillMissingGrowthWithAI(symbol, analysis);
         console.log(
-          `✅ YAHOO FINANCE DATA: Price = ₹${filled.currentPrice}`
+          `✅ YAHOO FINANCE DATA: Price = ₹${analysis.currentPrice}`
         );
-        return filled;
+        return analysis;
       }
     } catch (error) {
       console.log(
@@ -217,9 +223,12 @@ export class HybridStockService {
         const enhancedData = await this.getEnhancedFinancialData(symbol);
         if (enhancedData.hasRealData) {
           console.log(`✅ Direct RapidAPI Yahoo success for ${symbol} (no proxy)`);
-          const baseAnalysis = this.createEnhancedAnalysis(symbol, enhancedData);
-          const filled = await this.fillMissingProfitabilityWithAI(symbol, baseAnalysis);
-          return filled;
+          let analysis = this.createEnhancedAnalysis(symbol, enhancedData);
+          analysis = await this.fillMissingProfitabilityWithAI(symbol, analysis);
+          analysis = await this.fillMissingLiquidityWithAI(symbol, analysis);
+          analysis = await this.fillMissingValuationWithAI(symbol, analysis);
+          analysis = await this.fillMissingGrowthWithAI(symbol, analysis);
+          return analysis;
         }
       } else {
         console.log(`🔑 RapidAPI key not configured; skipping direct RapidAPI fallback.`);
@@ -254,6 +263,241 @@ export class HybridStockService {
     return response.choices[0].message.content;
   }
 
+  // Fill missing LIQUIDITY metrics using OpenRouter
+  private async fillMissingLiquidityWithAI(
+    symbol: string,
+    analysis: DetailedStockAnalysis
+  ): Promise<DetailedStockAnalysis> {
+    try {
+      const liq = (analysis.financialHealth?.liquidity || {}) as Record<string, MetricWithSource>;
+      const wanted = [
+        "Current Ratio",
+        "Quick Ratio",
+        "Debt-to-Equity",
+        "Interest Coverage",
+      ];
+
+      const missing = wanted.filter((k) => {
+        const m = liq[k];
+        return !m || m.isNA || m.dataSource === DataSource.MOCK || !m.value;
+      });
+
+      if (missing.length === 0) return analysis;
+
+      const prompt = `Return ONLY JSON (no prose) estimating missing liquidity ratios for ${symbol}. Output must be valid JSON matching exactly this schema: {"liquidity": {"Current Ratio": number, "Quick Ratio": number, "Debt-to-Equity": number, "Interest Coverage": number}}. Numbers only (no quotes, no %).`;
+
+      const resp = await VercelApiService.fetchOpenRouterAnalysis(symbol, prompt);
+      const content = resp?.choices?.[0]?.message?.content || "";
+      let jsonStr = content;
+      const codeMatch = content.match(/\{[\s\S]*\}/);
+      if (codeMatch) jsonStr = codeMatch[0];
+      let parsed: any = null;
+      try { parsed = JSON.parse(jsonStr); } catch (_) { parsed = null; }
+      if (!parsed || !parsed.liquidity) return analysis;
+
+      const updated = { ...analysis } as DetailedStockAnalysis;
+      updated.financialHealth = { ...analysis.financialHealth } as any;
+      const base = { ...(analysis.financialHealth?.liquidity || {}) } as Record<string, MetricWithSource>;
+
+      const toNumber = (v: any) => {
+        if (typeof v === 'number') return v;
+        if (typeof v === 'string') {
+          const cleaned = v.replace(/%/g, '').trim();
+          const num = parseFloat(cleaned);
+          if (!Number.isNaN(num)) return num;
+        }
+        return undefined;
+      };
+
+      const assessCR = (x: number) => {
+        if (x >= 2) return HealthStatus.BEST;
+        if (x >= 1.5) return HealthStatus.GOOD;
+        if (x >= 1) return HealthStatus.NORMAL;
+        if (x > 0.5) return HealthStatus.BAD;
+        return HealthStatus.WORSE;
+      };
+      const assessQR = (x: number) => {
+        if (x >= 1.5) return HealthStatus.BEST;
+        if (x >= 1.2) return HealthStatus.GOOD;
+        if (x >= 1) return HealthStatus.NORMAL;
+        if (x > 0.5) return HealthStatus.BAD;
+        return HealthStatus.WORSE;
+      };
+
+      console.log(`🤖 Filling missing liquidity via AI for ${symbol}:`, missing);
+      wanted.forEach((k) => {
+        const m = base[k];
+        const raw = parsed.liquidity?.[k];
+        const val = toNumber(raw);
+        if ((!m || m.isNA || m.dataSource === DataSource.MOCK || !m.value) && typeof val === 'number' && isFinite(val)) {
+          let health = this.assessValueHealth(val);
+          if (k === "Interest Coverage") health = this.assessInterestCoverageHealth(val);
+          else if (k === "Debt-to-Equity") health = this.assessDebtHealth(val);
+          else if (k === "Current Ratio") health = assessCR(val);
+          else if (k === "Quick Ratio") health = assessQR(val);
+
+          base[k] = {
+            value: val,
+            dataSource: DataSource.AI_GENERATED,
+            health,
+            lastUpdated: new Date(),
+          } as MetricWithSource;
+          console.log(`✅ AI filled ${k}: ${val}`);
+        }
+      });
+
+      (updated.financialHealth as any).liquidity = base;
+      return updated;
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      console.log(`⚠️ AI liquidity fill skipped: ${msg}`);
+      return analysis;
+    }
+  }
+
+  // Fill missing VALUATION metrics using OpenRouter
+  private async fillMissingValuationWithAI(
+    symbol: string,
+    analysis: DetailedStockAnalysis
+  ): Promise<DetailedStockAnalysis> {
+    try {
+      const valn = (analysis.financialHealth?.valuation || {}) as Record<string, MetricWithSource>;
+      const wanted = [
+        "P/S Ratio",
+        "EV/EBITDA",
+        "Dividend Yield",
+      ];
+
+      const missing = wanted.filter((k) => {
+        const m = valn[k];
+        return !m || m.isNA || m.dataSource === DataSource.MOCK || !m.value;
+      });
+
+      if (missing.length === 0) return analysis;
+
+      const prompt = `Return ONLY JSON (no prose) estimating missing valuation metrics for ${symbol}. Output must be valid JSON matching exactly this schema: {"valuation": {"P/S Ratio": number, "EV/EBITDA": number, "Dividend Yield": number}}. Numbers only (Dividend Yield as percent without %).`;
+
+      const resp = await VercelApiService.fetchOpenRouterAnalysis(symbol, prompt);
+      const content = resp?.choices?.[0]?.message?.content || "";
+      let jsonStr = content;
+      const codeMatch = content.match(/\{[\s\S]*\}/);
+      if (codeMatch) jsonStr = codeMatch[0];
+      let parsed: any = null;
+      try { parsed = JSON.parse(jsonStr); } catch (_) { parsed = null; }
+      if (!parsed || !parsed.valuation) return analysis;
+
+      const updated = { ...analysis } as DetailedStockAnalysis;
+      updated.financialHealth = { ...analysis.financialHealth } as any;
+      const base = { ...(analysis.financialHealth?.valuation || {}) } as Record<string, MetricWithSource>;
+
+      const toNumber = (v: any) => {
+        if (typeof v === 'number') return v;
+        if (typeof v === 'string') {
+          const cleaned = v.replace(/%/g, '').trim();
+          const num = parseFloat(cleaned);
+          if (!Number.isNaN(num)) return num;
+        }
+        return undefined;
+      };
+
+      console.log(`🤖 Filling missing valuation via AI for ${symbol}:`, missing);
+      wanted.forEach((k) => {
+        const m = base[k];
+        const raw = parsed.valuation?.[k];
+        const val = toNumber(raw);
+        if ((!m || m.isNA || m.dataSource === DataSource.MOCK || !m.value) && typeof val === 'number' && isFinite(val)) {
+          let health = this.assessValueHealth(val);
+          if (k === "Dividend Yield") health = this.assessDividendHealth(val);
+          if (k === "P/E Ratio") health = this.assessPEHealth(val);
+
+          base[k] = {
+            value: val,
+            dataSource: DataSource.AI_GENERATED,
+            health,
+            lastUpdated: new Date(),
+          } as MetricWithSource;
+          console.log(`✅ AI filled ${k}: ${val}`);
+        }
+      });
+
+      (updated.financialHealth as any).valuation = base;
+      return updated;
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      console.log(`⚠️ AI valuation fill skipped: ${msg}`);
+      return analysis;
+    }
+  }
+
+  // Fill missing GROWTH metrics using OpenRouter
+  private async fillMissingGrowthWithAI(
+    symbol: string,
+    analysis: DetailedStockAnalysis
+  ): Promise<DetailedStockAnalysis> {
+    try {
+      const growth = (analysis.financialHealth?.growth || {}) as Record<string, MetricWithSource>;
+      const wanted = [
+        "Revenue CAGR (3Y)",
+        "EPS Growth (3Y)",
+        "Market Share Growth",
+      ];
+
+      const missing = wanted.filter((k) => {
+        const m = growth[k];
+        return !m || m.isNA || m.dataSource === DataSource.MOCK || !m.value;
+      });
+
+      if (missing.length === 0) return analysis;
+
+      const prompt = `Return ONLY JSON (no prose) estimating missing growth metrics for ${symbol}. Output must be valid JSON matching exactly this schema: {"growth": {"Revenue CAGR (3Y)": number, "EPS Growth (3Y)": number, "Market Share Growth": number}}. Use percentages without % sign.`;
+
+      const resp = await VercelApiService.fetchOpenRouterAnalysis(symbol, prompt);
+      const content = resp?.choices?.[0]?.message?.content || "";
+      let jsonStr = content;
+      const codeMatch = content.match(/\{[\s\S]*\}/);
+      if (codeMatch) jsonStr = codeMatch[0];
+      let parsed: any = null;
+      try { parsed = JSON.parse(jsonStr); } catch (_) { parsed = null; }
+      if (!parsed || !parsed.growth) return analysis;
+
+      const updated = { ...analysis } as DetailedStockAnalysis;
+      updated.financialHealth = { ...analysis.financialHealth } as any;
+      const base = { ...(analysis.financialHealth?.growth || {}) } as Record<string, MetricWithSource>;
+
+      const toNumber = (v: any) => {
+        if (typeof v === 'number') return v;
+        if (typeof v === 'string') {
+          const cleaned = v.replace(/%/g, '').trim();
+          const num = parseFloat(cleaned);
+          if (!Number.isNaN(num)) return num;
+        }
+        return undefined;
+      };
+
+      console.log(`🤖 Filling missing growth via AI for ${symbol}:`, missing);
+      wanted.forEach((k) => {
+        const m = base[k];
+        const raw = parsed.growth?.[k];
+        const val = toNumber(raw);
+        if ((!m || m.isNA || m.dataSource === DataSource.MOCK || !m.value) && typeof val === 'number' && isFinite(val)) {
+          base[k] = {
+            value: val,
+            dataSource: DataSource.AI_GENERATED,
+            health: this.assessValueHealth(val),
+            lastUpdated: new Date(),
+          } as MetricWithSource;
+          console.log(`✅ AI filled ${k}: ${val}%`);
+        }
+      });
+
+      (updated.financialHealth as any).growth = base;
+      return updated;
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      console.log(`⚠️ AI growth fill skipped: ${msg}`);
+      return analysis;
+    }
+  }
   // Use local fallback system for development
   private async getLocalAnalysis(
     symbol: string
@@ -273,8 +517,12 @@ export class HybridStockService {
 
         if (enhancedData.hasRealData) {
           console.log(`✅ Enhanced data available for ${symbol}!`);
-          const base = this.createEnhancedAnalysis(symbol, enhancedData);
-          return await this.fillMissingProfitabilityWithAI(symbol, base);
+          let analysis = this.createEnhancedAnalysis(symbol, enhancedData);
+          analysis = await this.fillMissingProfitabilityWithAI(symbol, analysis);
+          analysis = await this.fillMissingLiquidityWithAI(symbol, analysis);
+          analysis = await this.fillMissingValuationWithAI(symbol, analysis);
+          analysis = await this.fillMissingGrowthWithAI(symbol, analysis);
+          return analysis;
         }
       } catch (error) {
         const msg = error instanceof Error ? error.message : String(error);
